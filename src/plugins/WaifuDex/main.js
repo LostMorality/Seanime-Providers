@@ -207,6 +207,7 @@ function init() {
     .media video { background:#000; }
     .video-load { position:absolute; z-index:2; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; border-color:#ffffff55; background:#171821eF; }
     .media-error { position:absolute; inset:auto 8px 8px; z-index:3; padding:8px; border:1px solid #ffaaaa55; border-radius:8px; color:#ffc2c2; background:#171821ee; font-size:11px; text-align:center; cursor:pointer; }
+    .media-loading { position:absolute; top:50%; left:50%; z-index:3; transform:translate(-50%,-50%); padding:9px 12px; border:1px solid #ffffff22; border-radius:9px; color:#e4deee; background:#171821dd; font-size:12px; text-align:center; pointer-events:none; }
     .card-info { display:flex; align-items:center; gap:8px; padding:9px 10px 10px; }
     .post-meta { flex:1; min-width:0; overflow:hidden; color:#b7b4c3; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
     .rating-chip { padding:3px 7px; border:1px solid #ffffff20; border-radius:999px; color:#dedbe7; font-size:10px; text-transform:uppercase; }
@@ -226,7 +227,7 @@ function init() {
     .viewer-toolbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border:0; background:linear-gradient(#050509dd,#05050900); }
     .viewer-nav { display:flex; align-items:center; gap:7px; }
     .viewer-media { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; width:100%; height:100%; overflow:hidden; background:#050509; }
-    .viewer-media img,.viewer-media video { display:block; max-width:100%; max-height:100%; object-fit:contain; }
+    .viewer-media img,.viewer-media video { display:block; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; }
     .viewer-media video { width:100%; height:100%; }
     .viewer-caption { position:absolute; z-index:2; left:0; right:0; bottom:0; padding:14px 16px; border:0; color:#f0edf7; background:linear-gradient(#05050900,#050509dd); font-size:13px; pointer-events:none; }
     @media(max-width:600px) { .viewer-toolbar { padding:8px; } .viewer-caption { padding:12px 10px; } }
@@ -310,13 +311,17 @@ function init() {
     function setProxiedImage(image, sourceUrl) {
       const proxyUrl = danbooruImageProxyUrl(sourceUrl);
       if (!proxyUrl) return;
+      image.style.width = "100%";
+      image.style.height = "100%";
+      const indicator = document.createElement("span");
+      indicator.className = "media-loading";
+      indicator.textContent = "Loading image…";
+      image.parentElement.appendChild(indicator);
+      image.addEventListener("load", () => indicator.remove(), { once: true });
       image.addEventListener("error", () => {
-        if (!image.isConnected || image.dataset.proxyFailed === "true") return;
-        image.dataset.proxyFailed = "true";
-        const notice = document.createElement("span");
-        notice.className = "media-error";
-        notice.textContent = "Image proxy unavailable at localhost:43211";
-        image.parentElement.appendChild(notice);
+        if (!image.isConnected) return;
+        indicator.className = "media-error";
+        indicator.textContent = "Image proxy failed at localhost:43211";
       }, { once: true });
       image.src = proxyUrl;
     }
@@ -371,6 +376,7 @@ function init() {
       if (["webm", "mp4"].includes(ext) && fullUrl) {
         const poster = document.createElement("img");
         poster.alt = tagLabel(post);
+        viewerMedia.appendChild(poster);
         if (posterUrl) setProxiedImage(poster, posterUrl);
         const video = document.createElement("video");
         video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
@@ -391,8 +397,8 @@ function init() {
       } else if (fullUrl) {
         const image = document.createElement("img");
         image.alt = tagLabel(post);
-        setProxiedImage(image, fullUrl);
         viewerMedia.appendChild(image);
+        setProxiedImage(image, fullUrl);
       }
     }
     let viewerOpener = null;
@@ -435,11 +441,11 @@ function init() {
       const galleryUrl = safeMediaUrl(post.large_file_url || post.file_url || post.preview_file_url);
       if (fullUrl && ["webm", "mp4"].includes(ext)) {
         const poster = document.createElement("img"); poster.className = "video-poster"; poster.alt = tagLabel(post); poster.loading = "lazy";
-        if (previewUrl) setProxiedImage(poster, previewUrl);
         media.appendChild(poster);
-      } else if (fullUrl && ["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext)) {
+        if (previewUrl) setProxiedImage(poster, previewUrl);
+      } else if (fullUrl && ["jpg", "jpeg", "png", "webp", "avif"].includes(ext)) {
         const image = document.createElement("img"); image.alt = tagLabel(post); image.loading = "lazy";
-        setProxiedImage(image, galleryUrl || previewUrl || fullUrl); media.appendChild(image);
+        media.appendChild(image); setProxiedImage(image, galleryUrl || previewUrl || fullUrl);
       } else {
         media.classList.add("empty"); media.textContent = "Media preview unavailable";
       }
