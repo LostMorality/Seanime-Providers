@@ -255,6 +255,27 @@ function init() {
     const mediaObjectUrls = new Map();
     const pendingMediaFetches = new Map();
     const DANBOORU_REFERRER = "https://danbooru.donmai.us/";
+    function danbooruImageProxyUrl(value) {
+      const target = safeMediaUrl(value);
+      if (!target) return "";
+      const proxy = new URL("http://localhost:43211/api/v1/image-proxy");
+      proxy.searchParams.set("url", target);
+      proxy.searchParams.set("headers", JSON.stringify({ Referer: DANBOORU_REFERRER }));
+      return proxy.href;
+    }
+    function setProxiedImage(image, sourceUrl) {
+      const proxyUrl = danbooruImageProxyUrl(sourceUrl);
+      if (!proxyUrl) return;
+      image.addEventListener("error", () => {
+        if (!image.isConnected || image.dataset.proxyFailed === "true") return;
+        image.dataset.proxyFailed = "true";
+        const notice = document.createElement("span");
+        notice.className = "media-error";
+        notice.textContent = "Image proxy unavailable at localhost:43211";
+        image.parentElement.appendChild(notice);
+      }, { once: true });
+      image.src = proxyUrl;
+    }
     async function fetchDanbooruMedia(url) {
       if (mediaObjectUrls.has(url)) return mediaObjectUrls.get(url);
       if (pendingMediaFetches.has(url)) return pendingMediaFetches.get(url);
@@ -279,34 +300,6 @@ function init() {
       pendingMediaFetches.set(url, request);
       return request;
     }
-    function loadThumbnail(image) {
-      if (image.dataset.loading === "true" || !image.dataset.mediaUrl) return;
-      image.dataset.loading = "true";
-      fetchDanbooruMedia(image.dataset.mediaUrl).then((objectUrl) => {
-        if (image.isConnected) image.src = objectUrl;
-      }).catch((cause) => {
-        if (!image.isConnected) return;
-        image.dataset.loading = "";
-        const notice = document.createElement("button");
-        notice.type = "button";
-        notice.className = "media-error";
-        notice.textContent = "Thumbnail blocked: " + (cause && cause.message ? cause.message : "request failed") + " · Retry";
-        notice.addEventListener("click", () => { notice.remove(); loadThumbnail(image); });
-        image.parentElement.appendChild(notice);
-      });
-    }
-    const mediaObserver = typeof IntersectionObserver === "function" ? new IntersectionObserver((entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        mediaObserver.unobserve(entry.target);
-        loadThumbnail(entry.target);
-      }
-    }, { rootMargin: "160px" }) : null;
-    function prepareThumbnail(image, mediaUrl) {
-      image.dataset.mediaUrl = mediaUrl;
-      if (mediaObserver) mediaObserver.observe(image);
-      else loadThumbnail(image);
-    }
     function tagLabel(post) {
       const names = String(post.tag_string_character || "").split(/\s+/).filter(Boolean).slice(0, 3);
       if (names.length) return names.map((tag) => tag.replace(/_/g, " ")).join(", ");
@@ -327,7 +320,7 @@ function init() {
       const previewUrl = safeMediaUrl(post.preview_file_url || post.large_file_url || post.file_url);
       if (fullUrl && ["webm", "mp4"].includes(ext)) {
         const poster = document.createElement("img"); poster.className = "video-poster"; poster.alt = tagLabel(post); poster.loading = "lazy";
-        if (previewUrl) prepareThumbnail(poster, previewUrl);
+        if (previewUrl) setProxiedImage(poster, previewUrl);
         const video = document.createElement("video"); video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
         video.setAttribute("aria-label", "Video post " + post.id);
         const loadButton = document.createElement("button"); loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Load video";
@@ -347,7 +340,7 @@ function init() {
         media.append(poster, video, loadButton);
       } else if (fullUrl && ["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext)) {
         const image = document.createElement("img"); image.alt = tagLabel(post); image.loading = "lazy";
-        prepareThumbnail(image, previewUrl || fullUrl); media.appendChild(image);
+        setProxiedImage(image, previewUrl || fullUrl); media.appendChild(image);
       } else {
         media.classList.add("empty"); media.textContent = "Media preview unavailable";
       }

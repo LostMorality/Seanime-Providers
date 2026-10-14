@@ -20,9 +20,10 @@
           "allowedDomains": [
             "danbooru.donmai.us",
             "cdn.donmai.us",
-            "assets.donmai.us"
+            "assets.donmai.us",
+            "localhost"
           ],
-          "reasoning": "Required to search the Danbooru post API and display its image and video media."
+          "reasoning": "Required to search the Danbooru post API, load its media CDN, and retrieve image thumbnails through the local image proxy."
         }
       }
     }
