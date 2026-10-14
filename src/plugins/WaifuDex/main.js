@@ -182,7 +182,10 @@ function init() {
     .card { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
     .media { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3/4; overflow:hidden; background:#08090d; }
     .media img,.media video { display:block; width:100%; height:100%; object-fit:contain; }
+    .media { position:relative; }
     .media video { background:#000; }
+    .video-load { position:absolute; z-index:2; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; border-color:#ffffff55; background:#171821eF; }
+    .media-error { position:absolute; inset:auto 8px 8px; z-index:3; padding:8px; border:1px solid #ffaaaa55; border-radius:8px; color:#ffc2c2; background:#171821ee; font-size:11px; text-align:center; cursor:pointer; }
     .card-info { display:flex; align-items:center; gap:8px; padding:9px 10px 10px; }
     .post-meta { flex:1; min-width:0; overflow:hidden; color:#b7b4c3; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
     .rating-chip { padding:3px 7px; border:1px solid #ffffff20; border-radius:999px; color:#dedbe7; font-size:10px; text-transform:uppercase; }
@@ -249,6 +252,61 @@ function init() {
       try { const url = new URL(value); return url.protocol === "https:" && (url.hostname === "donmai.us" || url.hostname.endsWith(".donmai.us")) ? url.href : ""; }
       catch (_) { return ""; }
     }
+    const mediaObjectUrls = new Map();
+    const pendingMediaFetches = new Map();
+    const DANBOORU_REFERRER = "https://danbooru.donmai.us/";
+    async function fetchDanbooruMedia(url) {
+      if (mediaObjectUrls.has(url)) return mediaObjectUrls.get(url);
+      if (pendingMediaFetches.has(url)) return pendingMediaFetches.get(url);
+      const request = fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        referrer: DANBOORU_REFERRER,
+        referrerPolicy: "origin",
+      }).then(async (response) => {
+        if (!response.ok) throw new Error("CDN returned HTTP " + response.status);
+        const objectUrl = URL.createObjectURL(await response.blob());
+        mediaObjectUrls.set(url, objectUrl);
+        while (mediaObjectUrls.size > 80) {
+          const oldest = mediaObjectUrls.entries().next().value;
+          if (!oldest) break;
+          mediaObjectUrls.delete(oldest[0]);
+          URL.revokeObjectURL(oldest[1]);
+        }
+        return objectUrl;
+      }).finally(() => pendingMediaFetches.delete(url));
+      pendingMediaFetches.set(url, request);
+      return request;
+    }
+    function loadThumbnail(image) {
+      if (image.dataset.loading === "true" || !image.dataset.mediaUrl) return;
+      image.dataset.loading = "true";
+      fetchDanbooruMedia(image.dataset.mediaUrl).then((objectUrl) => {
+        if (image.isConnected) image.src = objectUrl;
+      }).catch((cause) => {
+        if (!image.isConnected) return;
+        image.dataset.loading = "";
+        const notice = document.createElement("button");
+        notice.type = "button";
+        notice.className = "media-error";
+        notice.textContent = "Thumbnail blocked: " + (cause && cause.message ? cause.message : "request failed") + " · Retry";
+        notice.addEventListener("click", () => { notice.remove(); loadThumbnail(image); });
+        image.parentElement.appendChild(notice);
+      });
+    }
+    const mediaObserver = typeof IntersectionObserver === "function" ? new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        mediaObserver.unobserve(entry.target);
+        loadThumbnail(entry.target);
+      }
+    }, { rootMargin: "160px" }) : null;
+    function prepareThumbnail(image, mediaUrl) {
+      image.dataset.mediaUrl = mediaUrl;
+      if (mediaObserver) mediaObserver.observe(image);
+      else loadThumbnail(image);
+    }
     function tagLabel(post) {
       const names = String(post.tag_string_character || "").split(/\s+/).filter(Boolean).slice(0, 3);
       if (names.length) return names.map((tag) => tag.replace(/_/g, " ")).join(", ");
@@ -268,11 +326,28 @@ function init() {
       const fullUrl = safeMediaUrl(post.file_url || post.large_file_url);
       const previewUrl = safeMediaUrl(post.preview_file_url || post.large_file_url || post.file_url);
       if (fullUrl && ["webm", "mp4"].includes(ext)) {
-        const video = document.createElement("video"); video.src = fullUrl; video.controls = true; video.playsInline = true; video.preload = "none";
-        if (previewUrl) video.poster = previewUrl;
-        video.setAttribute("aria-label", "Video post " + post.id); media.appendChild(video);
+        const poster = document.createElement("img"); poster.className = "video-poster"; poster.alt = tagLabel(post); poster.loading = "lazy";
+        if (previewUrl) prepareThumbnail(poster, previewUrl);
+        const video = document.createElement("video"); video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
+        video.setAttribute("aria-label", "Video post " + post.id);
+        const loadButton = document.createElement("button"); loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Load video";
+        loadButton.addEventListener("click", async () => {
+          loadButton.disabled = true; loadButton.textContent = "Loading video…";
+          try {
+            video.src = await fetchDanbooruMedia(fullUrl);
+            video.classList.remove("hidden");
+            poster.classList.add("hidden");
+            loadButton.remove();
+          } catch (cause) {
+            loadButton.disabled = false;
+            loadButton.textContent = "Video blocked · retry";
+            loadButton.title = cause && cause.message ? cause.message : "CDN request failed";
+          }
+        });
+        media.append(poster, video, loadButton);
       } else if (fullUrl && ["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext)) {
-        const image = document.createElement("img"); image.src = previewUrl || fullUrl; image.alt = tagLabel(post); image.loading = "lazy"; image.referrerPolicy = "no-referrer"; media.appendChild(image);
+        const image = document.createElement("img"); image.alt = tagLabel(post); image.loading = "lazy";
+        prepareThumbnail(image, previewUrl || fullUrl); media.appendChild(image);
       } else {
         media.classList.add("empty"); media.textContent = "Media preview unavailable";
       }
