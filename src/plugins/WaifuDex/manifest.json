@@ -1,0 +1,31 @@
+{
+  "id": "waifu-dex",
+  "name": "WaifuDex",
+  "version": "1.1.0",
+  "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/WaifuDex/manifest.json",
+  "language": "javascript",
+  "type": "plugin",
+  "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback.",
+  "author": "WaifuDex contributors",
+  "icon": "",
+  "website": "https://danbooru.donmai.us/",
+  "lang": "multi",
+  "payloadURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/WaifuDex/main.js",
+  "plugin": {
+    "version": "1",
+    "permissions": {
+      "scopes": [],
+      "allow": {
+        "networkAccess": {
+          "allowedDomains": [
+            "danbooru.donmai.us",
+            "cdn.donmai.us",
+            "assets.donmai.us"
+          ],
+          "reasoning": "Required to search the Danbooru post API and display its image and video media."
+        }
+      }
+    }
+  },
+  "isDevelopment": false
+}

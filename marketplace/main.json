@@ -572,5 +572,17 @@
     "lang": "it",
     "icon": "https://animeunion.tv/favicon.ico",
     "website": "https://animeunion.tv"
+  },
+  {
+    "id": "waifu-dex",
+    "name": "WaifuDex",
+    "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/WaifuDex/manifest.json",
+    "author": "WaifuDex contributors",
+    "type": "plugin",
+    "language": "javascript",
+    "lang": "multi",
+    "icon": "",
+    "website": "https://danbooru.donmai.us/"
   }
 ]
