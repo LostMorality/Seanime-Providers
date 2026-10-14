@@ -206,6 +206,7 @@ function init() {
     .media img,.media video { display:block; width:100%; height:100%; object-fit:contain; }
     .media video { background:#000; }
     .video-load { position:absolute; z-index:2; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; border-color:#ffffff55; background:#171821eF; }
+    .video-badge { position:absolute; z-index:2; top:10px; left:10px; padding:5px 8px; border:1px solid #ffffff44; border-radius:999px; color:#fff; background:#171821dd; font-size:10px; font-weight:750; letter-spacing:.06em; pointer-events:none; }
     .media-error { position:absolute; inset:auto 8px 8px; z-index:3; padding:8px; border:1px solid #ffaaaa55; border-radius:8px; color:#ffc2c2; background:#171821ee; font-size:11px; text-align:center; cursor:pointer; }
     .media-loading { position:absolute; top:50%; left:50%; z-index:3; transform:translate(-50%,-50%); padding:9px 12px; border:1px solid #ffffff22; border-radius:9px; color:#e4deee; background:#171821dd; font-size:12px; text-align:center; pointer-events:none; }
     .card-info { display:flex; align-items:center; gap:8px; padding:9px 10px 10px; }
@@ -382,18 +383,26 @@ function init() {
         video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
         video.setAttribute("aria-label", "Video post " + post.id);
         const loadButton = document.createElement("button");
-        loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Load video";
-        loadButton.addEventListener("click", async () => {
+        loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Loading video…"; loadButton.disabled = true;
+        const startVideoLoad = async () => {
+          if (loadButton.dataset.loading === "true") return;
+          loadButton.dataset.loading = "true";
           loadButton.disabled = true; loadButton.textContent = "Loading video…";
           try {
             video.src = await fetchDanbooruMedia(fullUrl);
+            if (!video.isConnected) return;
+            video.load();
             video.classList.remove("hidden"); poster.classList.add("hidden"); loadButton.remove();
+            video.play().catch(() => {});
           } catch (cause) {
+            loadButton.dataset.loading = "";
             loadButton.disabled = false; loadButton.textContent = "Video blocked · retry";
             loadButton.title = cause && cause.message ? cause.message : "CDN request failed";
           }
-        });
+        };
+        loadButton.addEventListener("click", startVideoLoad);
         viewerMedia.append(poster, video, loadButton);
+        startVideoLoad();
       } else if (fullUrl) {
         const image = document.createElement("img");
         image.alt = tagLabel(post);
@@ -443,7 +452,8 @@ function init() {
         const poster = document.createElement("img"); poster.className = "video-poster"; poster.alt = tagLabel(post); poster.loading = "lazy";
         media.appendChild(poster);
         if (previewUrl) setProxiedImage(poster, previewUrl);
-      } else if (fullUrl && ["jpg", "jpeg", "png", "webp", "avif"].includes(ext)) {
+        const badge = document.createElement("span"); badge.className = "video-badge"; badge.textContent = "▶ VIDEO"; media.appendChild(badge);
+      } else if (fullUrl && ["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext)) {
         const image = document.createElement("img"); image.alt = tagLabel(post); image.loading = "lazy";
         media.appendChild(image); setProxiedImage(image, galleryUrl || previewUrl || fullUrl);
       } else {
@@ -455,7 +465,7 @@ function init() {
       const rating = document.createElement("span"); rating.className = "rating-chip rating-" + String(post.rating || "g"); rating.textContent = String(post.rating || "g"); rating.title = "Danbooru rating";
       const fav = document.createElement("button"); fav.className = "fav"; fav.type = "button"; fav.textContent = isFavorite(post) ? "♥" : "♡"; fav.setAttribute("aria-pressed", String(isFavorite(post))); fav.setAttribute("aria-label", isFavorite(post) ? "Remove from favorites" : "Add to favorites"); fav.addEventListener("click", () => toggleFavorite(post));
       info.append(meta, rating, fav);
-      const open = document.createElement("button"); open.className = "post-link"; open.type = "button"; open.textContent = "Open in viewer"; open.addEventListener("click", () => openViewer(post));
+      const open = document.createElement("button"); open.className = "post-link"; open.type = "button"; open.textContent = ["webm", "mp4"].includes(ext) ? "Play video in viewer" : "Open in viewer"; open.addEventListener("click", () => openViewer(post));
       card.append(media, info, open); return card;
     }
     function render() {
