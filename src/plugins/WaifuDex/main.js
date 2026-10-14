@@ -183,12 +183,7 @@ function init() {
     * { box-sizing:border-box; }
     body { margin:0; padding:clamp(14px,2.4vw,30px); color:var(--text); background:transparent; font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
     .app { max-width:1500px; margin:0 auto; }
-    header { display:flex; align-items:center; gap:16px; margin-bottom:18px; }
-    .brand { display:flex; align-items:center; gap:13px; min-width:0; }
-    .logo { display:grid; place-items:center; width:44px; height:44px; flex:none; border-radius:14px; background:linear-gradient(135deg,#8b5cf6,#e14b9b); font-size:23px; }
-    h1 { margin:0; font-size:clamp(21px,3vw,30px); letter-spacing:-.04em; }
-    .subtitle { margin:3px 0 0; color:var(--muted); font-size:12px; }
-    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin:16px 0 12px; padding:13px; border:1px solid var(--line); border-radius:15px; background:#ffffff07; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin:0 0 12px; padding:13px; border:1px solid var(--line); border-radius:15px; background:#ffffff07; }
     .search { display:flex; flex:1 1 360px; gap:8px; min-width:220px; }
     input,select,button { font:inherit; }
     input,select { min-width:0; border:1px solid #ffffff22; border-radius:10px; padding:10px 12px; color:var(--text); background:#171821; }
@@ -225,24 +220,21 @@ function init() {
     .empty { padding:50px 20px; border:1px dashed #ffffff24; border-radius:14px; color:var(--muted); text-align:center; }
     .footer { display:flex; justify-content:center; padding:18px 0 8px; }
     .hidden { display:none !important; }
-    body.viewer-open { overflow:hidden; }
-    .viewer { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; padding:clamp(8px,2vw,24px); background:rgba(3,4,8,.94); }
-    .viewer-panel { display:grid; grid-template-rows:auto minmax(0,1fr) auto; width:min(1500px,100%); height:min(96vh,1100px); overflow:hidden; border:1px solid #ffffff26; border-radius:16px; background:#11121a; box-shadow:0 20px 80px #000a; }
-    .viewer-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); }
+    html.viewer-open,body.viewer-open { height:100%; overflow:hidden !important; overscroll-behavior:none; }
+    .viewer { position:fixed; inset:0; z-index:99999; display:block; width:100vw; height:100vh; height:100dvh; overflow:hidden; padding:0; background:#050509; }
+    .viewer-panel { position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border:0; border-radius:0; background:#050509; }
+    .viewer-toolbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border:0; background:linear-gradient(#050509dd,#05050900); }
     .viewer-nav { display:flex; align-items:center; gap:7px; }
-    .viewer-media { position:relative; display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden; background:#050509; }
+    .viewer-media { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; width:100%; height:100%; overflow:hidden; background:#050509; }
     .viewer-media img,.viewer-media video { display:block; max-width:100%; max-height:100%; object-fit:contain; }
     .viewer-media video { width:100%; height:100%; }
-    .viewer-caption { padding:10px 15px; border-top:1px solid var(--line); color:#d1cddd; font-size:13px; }
-    @media(max-width:600px) { .viewer { padding:0; } .viewer-panel { width:100%; height:100dvh; border:0; border-radius:0; } .viewer-toolbar { padding:8px; } }
+    .viewer-caption { position:absolute; z-index:2; left:0; right:0; bottom:0; padding:14px 16px; border:0; color:#f0edf7; background:linear-gradient(#05050900,#050509dd); font-size:13px; pointer-events:none; }
+    @media(max-width:600px) { .viewer-toolbar { padding:8px; } .viewer-caption { padding:12px 10px; } }
     @media(max-width:600px) { .toolbar { padding:10px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .media { aspect-ratio:2/3; } .card-info { padding:7px; gap:5px; } .post-meta { font-size:10px; } .fav { padding:4px 6px; } }
   </style>
 </head>
 <body>
   <main class="app">
-    <header>
-      <div class="brand"><span class="logo" aria-hidden="true">✿</span><div><h1>WaifuDex</h1><p class="subtitle">Anime imageboard · Danbooru posts · images, GIFs, WebM and MP4</p></div></div>
-    </header>
     <form class="toolbar" id="search-form">
       <div class="search"><input id="tags" type="search" maxlength="160" placeholder="Up to 2 tags or character names (e.g. hatsune_miku)" aria-label="Search Danbooru tags"><button class="primary" type="submit">Search</button></div>
       <select id="rating" aria-label="Content rating">
@@ -404,12 +396,15 @@ function init() {
       }
     }
     let viewerOpener = null;
+    let viewerOpenerScrollY = 0;
     function openViewer(post) {
       const source = view === "favorites" ? favorites : currentPosts;
       viewerPosts = source.slice();
       viewerIndex = viewerPosts.findIndex((item) => String(item.id) === String(post.id));
       if (viewerIndex < 0) { viewerPosts = [post]; viewerIndex = 0; }
       viewerOpener = document.activeElement;
+      viewerOpenerScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.documentElement.classList.add("viewer-open");
       viewerRoot.classList.remove("hidden");
       document.body.classList.add("viewer-open");
       renderViewer();
@@ -418,8 +413,12 @@ function init() {
     function closeViewer() {
       viewerRoot.classList.add("hidden");
       document.body.classList.remove("viewer-open");
+      document.documentElement.classList.remove("viewer-open");
       viewerMedia.replaceChildren();
-      if (viewerOpener && typeof viewerOpener.focus === "function") viewerOpener.focus();
+      window.scrollTo(0, viewerOpenerScrollY);
+      if (viewerOpener && typeof viewerOpener.focus === "function") {
+        try { viewerOpener.focus({ preventScroll: true }); } catch (_) { viewerOpener.focus(); }
+      }
     }
     function moveViewer(delta) {
       const nextIndex = viewerIndex + delta;
