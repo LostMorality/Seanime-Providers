@@ -43,19 +43,42 @@ function init() {
                 if (token === "1boy" || token === "male" || token === "rating") continue;
                 if (BLOCKED_AGE_TAGS.has(token)) continue;
                 if (!clean.includes(token)) clean.push(token);
-                if (clean.length >= 8) break;
+                if (clean.length >= 2) break;
             }
             return clean.join(" ");
         }
 
         function makeQueryTags(userTags, selectedRating, selectedSort) {
-            const tags = ["rating:" + selectedRating, "1girl"];
+            const tags = ["rating:" + selectedRating];
             if (userTags) tags.push(userTags);
-            if (selectedRating === "q" || selectedRating === "e") {
-                tags.push("-loli", "-shota", "-young", "-child", "-underage", "-cub", "-ageplay");
-            }
+            else tags.push("1girl");
             if (selectedSort === "popular") tags.push("order:score");
             return tags.join(" ");
+        }
+
+        function postTagSet(post) {
+            const strings = [post.tag_string, post.tag_string_general, post.tag_string_character, post.tag_string_copyright, post.tag_string_artist, post.tag_string_meta];
+            return new Set(strings.filter(Boolean).join(" ").toLowerCase().split(/\s+/).filter(Boolean));
+        }
+
+        function isGalleryPost(post, selectedRating) {
+            const tags = postTagSet(post);
+            if (!tags.has("1girl")) return false;
+            if ((selectedRating === "q" || selectedRating === "e") && Array.from(BLOCKED_AGE_TAGS).some((tag) => tags.has(tag))) return false;
+            return true;
+        }
+
+        async function responseDetails(response) {
+            try {
+                const body = await response.json();
+                if (!body || typeof body !== "object") return String(body || "");
+                if (body.message) return String(body.message);
+                if (body.error) return String(body.error);
+                if (Array.isArray(body.errors)) return body.errors.flat().map(String).join("; ");
+                return JSON.stringify(body).slice(0, 240);
+            } catch (_) {
+                return "";
+            }
         }
 
         function setFailure(message) {
@@ -95,6 +118,10 @@ function init() {
                 if (!response.ok) {
                     if (response.status === 403) throw new Error("Danbooru denied the API request (HTTP 403). The board may be applying an access check or Cloudflare challenge.");
                     if (response.status === 429) throw new Error("Danbooru rate-limited this request. Wait a moment, then retry.");
+                    if (response.status === 422 || response.status === 424) {
+                        const details = await responseDetails(response);
+                        throw new Error("Danbooru rejected the search (HTTP " + response.status + "): " + (details || "Try no more than two tags; rating and sort filters are applied separately."));
+                    }
                     throw new Error("Danbooru returned HTTP " + response.status + ".");
                 }
                 let result;
@@ -104,7 +131,7 @@ function init() {
                     throw new Error("Danbooru returned non-JSON data. The board may have served a Cloudflare challenge or maintenance page.");
                 }
                 if (!Array.isArray(result)) throw new Error("Danbooru returned an unexpected response. Check the board access and API status.");
-                const supported = result.filter((post) => post && post.id && post.file_url && ["jpg", "jpeg", "png", "gif", "webp", "avif", "webm", "mp4"].includes(String(post.file_ext || "").toLowerCase()));
+                const supported = result.filter((post) => post && post.id && post.file_url && ["jpg", "jpeg", "png", "gif", "webp", "avif", "webm", "mp4"].includes(String(post.file_ext || "").toLowerCase()) && isGalleryPost(post, rating));
                 const existing = append ? posts.get() : [];
                 const ids = new Set(existing.map((post) => String(post.id)));
                 const combined = existing.concat(supported.filter((post) => !ids.has(String(post.id))));
@@ -180,9 +207,8 @@ function init() {
     .status.error { color:#ffaaaa; }
     .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr)); gap:14px; align-items:start; }
     .card { position:relative; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
-    .media { display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3/4; overflow:hidden; background:#08090d; }
+    .media { position:relative; display:flex; align-items:center; justify-content:center; width:100%; aspect-ratio:3/4; overflow:hidden; background:#08090d; cursor:zoom-in; }
     .media img,.media video { display:block; width:100%; height:100%; object-fit:contain; }
-    .media { position:relative; }
     .media video { background:#000; }
     .video-load { position:absolute; z-index:2; bottom:12px; left:50%; transform:translateX(-50%); white-space:nowrap; border-color:#ffffff55; background:#171821eF; }
     .media-error { position:absolute; inset:auto 8px 8px; z-index:3; padding:8px; border:1px solid #ffaaaa55; border-radius:8px; color:#ffc2c2; background:#171821ee; font-size:11px; text-align:center; cursor:pointer; }
@@ -194,11 +220,21 @@ function init() {
     .rating-s { border-color:#bd9af566; color:#dbbfff; }
     .fav { flex:none; padding:5px 8px; border-radius:8px; color:#ddd; line-height:1; }
     .fav[aria-pressed=true] { color:#ff79b8; }
-    .post-link { display:block; padding:0 10px 10px; color:#c8aaff; font-size:11px; text-decoration:none; }
-    .post-link:hover { text-decoration:underline; }
+    .post-link { display:block; width:calc(100% - 20px); margin:0 10px 10px; border:0; padding:0; color:#c8aaff; background:transparent; font-size:11px; text-align:left; }
+    .post-link:hover { color:#dfceff; background:transparent; text-decoration:underline; }
     .empty { padding:50px 20px; border:1px dashed #ffffff24; border-radius:14px; color:var(--muted); text-align:center; }
     .footer { display:flex; justify-content:center; padding:18px 0 8px; }
     .hidden { display:none !important; }
+    body.viewer-open { overflow:hidden; }
+    .viewer { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; padding:clamp(8px,2vw,24px); background:rgba(3,4,8,.94); }
+    .viewer-panel { display:grid; grid-template-rows:auto minmax(0,1fr) auto; width:min(1500px,100%); height:min(96vh,1100px); overflow:hidden; border:1px solid #ffffff26; border-radius:16px; background:#11121a; box-shadow:0 20px 80px #000a; }
+    .viewer-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); }
+    .viewer-nav { display:flex; align-items:center; gap:7px; }
+    .viewer-media { position:relative; display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden; background:#050509; }
+    .viewer-media img,.viewer-media video { display:block; max-width:100%; max-height:100%; object-fit:contain; }
+    .viewer-media video { width:100%; height:100%; }
+    .viewer-caption { padding:10px 15px; border-top:1px solid var(--line); color:#d1cddd; font-size:13px; }
+    @media(max-width:600px) { .viewer { padding:0; } .viewer-panel { width:100%; height:100dvh; border:0; border-radius:0; } .viewer-toolbar { padding:8px; } }
     @media(max-width:600px) { .toolbar { padding:10px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .media { aspect-ratio:2/3; } .card-info { padding:7px; gap:5px; } .post-meta { font-size:10px; } .fav { padding:4px 6px; } }
   </style>
 </head>
@@ -208,7 +244,7 @@ function init() {
       <div class="brand"><span class="logo" aria-hidden="true">✿</span><div><h1>WaifuDex</h1><p class="subtitle">Anime imageboard · Danbooru posts · images, GIFs, WebM and MP4</p></div></div>
     </header>
     <form class="toolbar" id="search-form">
-      <div class="search"><input id="tags" type="search" maxlength="160" placeholder="Tags or character names (e.g. hatsune_miku)" aria-label="Search Danbooru tags"><button class="primary" type="submit">Search</button></div>
+      <div class="search"><input id="tags" type="search" maxlength="160" placeholder="Up to 2 tags or character names (e.g. hatsune_miku)" aria-label="Search Danbooru tags"><button class="primary" type="submit">Search</button></div>
       <select id="rating" aria-label="Content rating">
         <option value="g">General · SFW</option>
         <option value="s">Sensitive</option>
@@ -222,6 +258,13 @@ function init() {
     <div id="status" class="status" role="status" aria-live="polite">Loading Danbooru posts…</div>
     <section id="grid" class="grid" aria-label="Danbooru posts"></section>
     <div class="footer" id="footer"><button id="load-more" type="button">Load more</button></div>
+    <div id="viewer" class="viewer hidden" role="dialog" aria-modal="true" aria-label="WaifuDex media viewer">
+      <div class="viewer-panel">
+        <div class="viewer-toolbar"><span id="viewer-count"></span><div class="viewer-nav"><button id="viewer-prev" type="button" aria-label="Previous post">←</button><button id="viewer-next" type="button" aria-label="Next post">→</button><button id="viewer-close" type="button">Close</button></div></div>
+        <div id="viewer-media" class="viewer-media"></div>
+        <div id="viewer-caption" class="viewer-caption"></div>
+      </div>
+    </div>
   </main>
   <script>
     const $ = (selector) => document.querySelector(selector);
@@ -233,6 +276,13 @@ function init() {
     const ratingInput = $("#rating");
     const sortInput = $("#sort");
     const warning = $("#adult-warning");
+    const viewerRoot = $("#viewer");
+    const viewerMedia = $("#viewer-media");
+    const viewerCount = $("#viewer-count");
+    const viewerCaption = $("#viewer-caption");
+    const viewerPrev = $("#viewer-prev");
+    const viewerNext = $("#viewer-next");
+    const viewerClose = $("#viewer-close");
     const STORAGE_KEY = "seanime-waifudex-danbooru-favorites-v1";
     let currentPosts = [];
     let isLoading = true;
@@ -242,6 +292,8 @@ function init() {
     let currentTags = "";
     let view = "browse";
     let favorites = readFavorites();
+    let viewerPosts = [];
+    let viewerIndex = -1;
 
     function readFavorites() {
       try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); return Array.isArray(value) ? value : []; }
@@ -312,45 +364,94 @@ function init() {
       favorites = isFavorite(post) ? favorites.filter((item) => String(item.id) !== String(post.id)) : [post, ...favorites].slice(0, 400);
       saveFavorites(); render();
     }
+    function renderViewer() {
+      const post = viewerPosts[viewerIndex];
+      if (!post) return;
+      viewerMedia.replaceChildren();
+      const ext = String(post.file_ext || "").toLowerCase();
+      const fullUrl = safeMediaUrl(post.file_url || post.large_file_url || post.preview_file_url);
+      const posterUrl = safeMediaUrl(post.preview_file_url || post.large_file_url);
+      viewerCount.textContent = (viewerIndex + 1) + " / " + viewerPosts.length;
+      viewerPrev.disabled = viewerIndex <= 0;
+      viewerNext.disabled = viewerIndex >= viewerPosts.length - 1;
+      const ratingName = ({g:"General / SFW",s:"Sensitive",q:"Questionable / NSFW",e:"Explicit / NSFW"})[post.rating] || String(post.rating || "unrated");
+      viewerCaption.textContent = "#" + post.id + " · " + tagLabel(post) + " · " + ratingName + " · score " + Number(post.score || 0);
+      if (["webm", "mp4"].includes(ext) && fullUrl) {
+        const poster = document.createElement("img");
+        poster.alt = tagLabel(post);
+        if (posterUrl) setProxiedImage(poster, posterUrl);
+        const video = document.createElement("video");
+        video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
+        video.setAttribute("aria-label", "Video post " + post.id);
+        const loadButton = document.createElement("button");
+        loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Load video";
+        loadButton.addEventListener("click", async () => {
+          loadButton.disabled = true; loadButton.textContent = "Loading video…";
+          try {
+            video.src = await fetchDanbooruMedia(fullUrl);
+            video.classList.remove("hidden"); poster.classList.add("hidden"); loadButton.remove();
+          } catch (cause) {
+            loadButton.disabled = false; loadButton.textContent = "Video blocked · retry";
+            loadButton.title = cause && cause.message ? cause.message : "CDN request failed";
+          }
+        });
+        viewerMedia.append(poster, video, loadButton);
+      } else if (fullUrl) {
+        const image = document.createElement("img");
+        image.alt = tagLabel(post);
+        setProxiedImage(image, fullUrl);
+        viewerMedia.appendChild(image);
+      }
+    }
+    let viewerOpener = null;
+    function openViewer(post) {
+      const source = view === "favorites" ? favorites : currentPosts;
+      viewerPosts = source.slice();
+      viewerIndex = viewerPosts.findIndex((item) => String(item.id) === String(post.id));
+      if (viewerIndex < 0) { viewerPosts = [post]; viewerIndex = 0; }
+      viewerOpener = document.activeElement;
+      viewerRoot.classList.remove("hidden");
+      document.body.classList.add("viewer-open");
+      renderViewer();
+      viewerClose.focus();
+    }
+    function closeViewer() {
+      viewerRoot.classList.add("hidden");
+      document.body.classList.remove("viewer-open");
+      viewerMedia.replaceChildren();
+      if (viewerOpener && typeof viewerOpener.focus === "function") viewerOpener.focus();
+    }
+    function moveViewer(delta) {
+      const nextIndex = viewerIndex + delta;
+      if (nextIndex < 0 || nextIndex >= viewerPosts.length) return;
+      viewerIndex = nextIndex;
+      renderViewer();
+    }
     function createCard(post) {
       const card = document.createElement("article"); card.className = "card";
       const media = document.createElement("div"); media.className = "media";
       const ext = String(post.file_ext || "").toLowerCase();
       const fullUrl = safeMediaUrl(post.file_url || post.large_file_url);
       const previewUrl = safeMediaUrl(post.preview_file_url || post.large_file_url || post.file_url);
+      const galleryUrl = safeMediaUrl(post.large_file_url || post.file_url || post.preview_file_url);
       if (fullUrl && ["webm", "mp4"].includes(ext)) {
         const poster = document.createElement("img"); poster.className = "video-poster"; poster.alt = tagLabel(post); poster.loading = "lazy";
         if (previewUrl) setProxiedImage(poster, previewUrl);
-        const video = document.createElement("video"); video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
-        video.setAttribute("aria-label", "Video post " + post.id);
-        const loadButton = document.createElement("button"); loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Load video";
-        loadButton.addEventListener("click", async () => {
-          loadButton.disabled = true; loadButton.textContent = "Loading video…";
-          try {
-            video.src = await fetchDanbooruMedia(fullUrl);
-            video.classList.remove("hidden");
-            poster.classList.add("hidden");
-            loadButton.remove();
-          } catch (cause) {
-            loadButton.disabled = false;
-            loadButton.textContent = "Video blocked · retry";
-            loadButton.title = cause && cause.message ? cause.message : "CDN request failed";
-          }
-        });
-        media.append(poster, video, loadButton);
+        media.appendChild(poster);
       } else if (fullUrl && ["jpg", "jpeg", "png", "gif", "webp", "avif"].includes(ext)) {
         const image = document.createElement("img"); image.alt = tagLabel(post); image.loading = "lazy";
-        setProxiedImage(image, previewUrl || fullUrl); media.appendChild(image);
+        setProxiedImage(image, galleryUrl || previewUrl || fullUrl); media.appendChild(image);
       } else {
         media.classList.add("empty"); media.textContent = "Media preview unavailable";
       }
+      media.addEventListener("click", () => openViewer(post));
       const info = document.createElement("div"); info.className = "card-info";
       const meta = document.createElement("span"); meta.className = "post-meta"; meta.textContent = "#" + post.id + " · " + tagLabel(post) + " · score " + Number(post.score || 0); meta.title = tagLabel(post);
       const rating = document.createElement("span"); rating.className = "rating-chip rating-" + String(post.rating || "g"); rating.textContent = String(post.rating || "g"); rating.title = "Danbooru rating";
       const fav = document.createElement("button"); fav.className = "fav"; fav.type = "button"; fav.textContent = isFavorite(post) ? "♥" : "♡"; fav.setAttribute("aria-pressed", String(isFavorite(post))); fav.setAttribute("aria-label", isFavorite(post) ? "Remove from favorites" : "Add to favorites"); fav.addEventListener("click", () => toggleFavorite(post));
       info.append(meta, rating, fav);
-      const link = document.createElement("a"); link.className = "post-link"; link.href = "https://danbooru.donmai.us/posts/" + encodeURIComponent(post.id); link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "Open post on Danbooru ↗";
-      card.append(media, info, link); return card;
+      const open = document.createElement("button"); open.className = "post-link"; open.type = "button"; open.textContent = "Open in viewer"; open.addEventListener("click", () => openViewer(post));
+      card.append(media, info, open); return card;
     }
     function render() {
       warning.classList.toggle("visible", currentRating === "q" || currentRating === "e");
@@ -374,6 +475,16 @@ function init() {
     }
     function submitSearch(event) { if (event) event.preventDefault(); view = "browse"; updateTabs(); window.webview && window.webview.send("search", { tags: tagsInput.value, rating: ratingInput.value, sort: sortInput.value }); }
     function updateTabs() { document.querySelectorAll(".tab").forEach((button) => button.setAttribute("aria-selected", String(button.dataset.view === view))); }
+    viewerClose.addEventListener("click", closeViewer);
+    viewerPrev.addEventListener("click", () => moveViewer(-1));
+    viewerNext.addEventListener("click", () => moveViewer(1));
+    viewerRoot.addEventListener("click", (event) => { if (event.target === viewerRoot) closeViewer(); });
+    document.addEventListener("keydown", (event) => {
+      if (viewerRoot.classList.contains("hidden")) return;
+      if (event.key === "Escape") closeViewer();
+      else if (event.key === "ArrowLeft") moveViewer(-1);
+      else if (event.key === "ArrowRight") moveViewer(1);
+    });
     form.addEventListener("submit", submitSearch);
     ratingInput.addEventListener("change", submitSearch);
     sortInput.addEventListener("change", submitSearch);
