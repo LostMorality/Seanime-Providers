@@ -5,7 +5,7 @@
   "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/WaifuDex/manifest.json",
   "language": "javascript",
   "type": "plugin",
-  "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback.",
+  "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback. NOTE: In some enviroments, image/video loading fails. To fix that change the value of securemode in Seanime's config.toml to lax",
   "author": "Pal",
   "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/waifudex.jpg",
   "website": "https://danbooru.donmai.us/",
