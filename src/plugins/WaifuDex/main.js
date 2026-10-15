@@ -301,12 +301,15 @@ function init() {
     const mediaObjectUrls = new Map();
     const pendingMediaFetches = new Map();
     const DANBOORU_REFERRER = "https://danbooru.donmai.us/";
-    function danbooruProxyUrl(value, endpoint) {
+    function danbooruProxyUrl(value, endpoint, includeUserAgent) {
       const target = safeMediaUrl(value);
       if (!target) return "";
       const proxy = new URL("http://localhost:43211/api/v1/" + endpoint);
       proxy.searchParams.set("url", target);
-      proxy.searchParams.set("headers", JSON.stringify({ Referer: DANBOORU_REFERRER }));
+      const headers = includeUserAgent
+        ? { "User-Agent": "curl/8.10.1", Referer: DANBOORU_REFERRER }
+        : { Referer: DANBOORU_REFERRER };
+      proxy.searchParams.set("headers", JSON.stringify(headers));
       return proxy.href;
     }
     function danbooruImageProxyUrl(value) { return danbooruProxyUrl(value, "image-proxy"); }
@@ -330,7 +333,7 @@ function init() {
     async function fetchDanbooruMedia(url) {
       if (mediaObjectUrls.has(url)) return mediaObjectUrls.get(url);
       if (pendingMediaFetches.has(url)) return pendingMediaFetches.get(url);
-      const proxyUrl = danbooruProxyUrl(url, "proxy/");
+      const proxyUrl = danbooruProxyUrl(url, "proxy", true);
       if (!proxyUrl) throw new Error("Invalid Danbooru media URL");
       const request = fetch(proxyUrl, { method: "GET", mode: "cors", credentials: "omit" }).then(async (response) => {
         if (!response.ok) throw new Error("Local media proxy returned HTTP " + response.status);
