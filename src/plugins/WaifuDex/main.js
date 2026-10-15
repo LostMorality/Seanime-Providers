@@ -298,8 +298,6 @@ function init() {
       try { const url = new URL(value); return url.protocol === "https:" && (url.hostname === "donmai.us" || url.hostname.endsWith(".donmai.us")) ? url.href : ""; }
       catch (_) { return ""; }
     }
-    const mediaObjectUrls = new Map();
-    const pendingMediaFetches = new Map();
     const DANBOORU_REFERRER = "https://danbooru.donmai.us/";
     function danbooruProxyUrl(value, endpoint, includeUserAgent) {
       const target = safeMediaUrl(value);
@@ -329,26 +327,6 @@ function init() {
         indicator.textContent = "Image proxy failed at localhost:43211";
       }, { once: true });
       image.src = proxyUrl;
-    }
-    async function fetchDanbooruMedia(url) {
-      if (mediaObjectUrls.has(url)) return mediaObjectUrls.get(url);
-      if (pendingMediaFetches.has(url)) return pendingMediaFetches.get(url);
-      const proxyUrl = danbooruProxyUrl(url, "proxy", true);
-      if (!proxyUrl) throw new Error("Invalid Danbooru media URL");
-      const request = fetch(proxyUrl, { method: "GET", mode: "cors", credentials: "omit" }).then(async (response) => {
-        if (!response.ok) throw new Error("Local media proxy returned HTTP " + response.status);
-        const objectUrl = URL.createObjectURL(await response.blob());
-        mediaObjectUrls.set(url, objectUrl);
-        while (mediaObjectUrls.size > 80) {
-          const oldest = mediaObjectUrls.entries().next().value;
-          if (!oldest) break;
-          mediaObjectUrls.delete(oldest[0]);
-          URL.revokeObjectURL(oldest[1]);
-        }
-        return objectUrl;
-      }).finally(() => pendingMediaFetches.delete(url));
-      pendingMediaFetches.set(url, request);
-      return request;
     }
     function tagLabel(post) {
       const names = String(post.tag_string_character || "").split(/\s+/).filter(Boolean).slice(0, 3);
@@ -382,24 +360,34 @@ function init() {
         const video = document.createElement("video");
         video.className = "hidden"; video.controls = true; video.playsInline = true; video.preload = "none";
         video.setAttribute("aria-label", "Video post " + post.id);
+        const source = document.createElement("source");
+        source.type = ext === "mp4" ? "video/mp4" : "video/webm";
+        video.appendChild(source);
         const loadButton = document.createElement("button");
         loadButton.className = "video-load"; loadButton.type = "button"; loadButton.textContent = "Loading video…"; loadButton.disabled = true;
-        const startVideoLoad = async () => {
-          if (loadButton.dataset.loading === "true") return;
-          loadButton.dataset.loading = "true";
-          loadButton.disabled = true; loadButton.textContent = "Loading video…";
-          try {
-            video.src = await fetchDanbooruMedia(fullUrl);
-            if (!video.isConnected) return;
-            video.load();
-            video.classList.remove("hidden"); poster.classList.add("hidden"); loadButton.remove();
-            video.play().catch(() => {});
-          } catch (cause) {
-            loadButton.dataset.loading = "";
-            loadButton.disabled = false; loadButton.textContent = "Video blocked · retry";
-            loadButton.title = cause && cause.message ? cause.message : "CDN request failed";
+        const videoProxyUrl = danbooruProxyUrl(fullUrl, "proxy", true);
+        const startVideoLoad = () => {
+          if (!videoProxyUrl) {
+            loadButton.disabled = false; loadButton.textContent = "Invalid video URL";
+            return;
           }
+          loadButton.disabled = true; loadButton.textContent = "Loading video…";
+          video.classList.add("hidden");
+          poster.classList.remove("hidden");
+          source.src = videoProxyUrl;
+          video.load();
         };
+        video.addEventListener("loadeddata", () => {
+          if (!video.isConnected) return;
+          video.classList.remove("hidden"); poster.classList.add("hidden"); loadButton.remove();
+          video.play().catch(() => {});
+        });
+        video.addEventListener("error", () => {
+          if (!video.isConnected) return;
+          video.classList.add("hidden"); poster.classList.remove("hidden");
+          loadButton.disabled = false; loadButton.textContent = "Video unavailable · retry";
+          loadButton.title = "The local proxy did not return playable video media.";
+        });
         loadButton.addEventListener("click", startVideoLoad);
         viewerMedia.append(poster, video, loadButton);
         startVideoLoad();
