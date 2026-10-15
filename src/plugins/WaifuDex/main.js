@@ -223,14 +223,13 @@ function init() {
     .footer { display:flex; justify-content:center; padding:18px 0 8px; }
     .hidden { display:none !important; }
     html.viewer-open,body.viewer-open { height:100%; overflow:hidden !important; overscroll-behavior:none; }
-    .viewer { position:fixed; inset:0; z-index:99999; display:block; width:100vw; height:100vh; height:100dvh; overflow:hidden; padding:0; background:#050509; }
-    .viewer-panel { position:absolute; inset:0; width:100%; height:100%; overflow:hidden; border:0; border-radius:0; background:#050509; }
-    .viewer-toolbar { position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border:0; background:linear-gradient(#050509dd,#05050900); }
+    .viewer { position:fixed; inset:0; z-index:99999; display:block; width:100vw; height:100vh; height:100dvh; overflow:hidden; padding:0; background:var(--bg); }
+    .viewer-panel { position:absolute; inset:0; display:grid; grid-template-rows:auto minmax(0,1fr); width:100%; height:100%; overflow:hidden; border:0; border-radius:0; background:transparent; }
+    .viewer-toolbar { position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:54px; padding:8px 16px; border:0; border-bottom:1px solid var(--line); background:var(--bg); }
     .viewer-nav { display:flex; align-items:center; gap:7px; }
-    .viewer-media { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; width:100%; height:100%; overflow:hidden; background:#050509; }
-    .viewer-media img,.viewer-media video { display:block; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; }
-    .viewer-media video { width:100%; height:100%; }
-    .viewer-caption { position:absolute; z-index:2; left:0; right:0; bottom:0; padding:14px 16px; border:0; color:#f0edf7; background:linear-gradient(#05050900,#050509dd); font-size:13px; pointer-events:none; }
+    .viewer-media { position:relative; display:flex; align-items:flex-start; justify-content:center; min-width:0; min-height:0; width:100%; height:100%; overflow:hidden; background:transparent; }
+    .viewer-media img,.viewer-media video { display:block; width:auto; height:auto; max-width:100%; max-height:100%; object-fit:contain; }
+    .viewer-caption { display:none; }
     @media(max-width:600px) { .viewer-toolbar { padding:8px; } .viewer-caption { padding:12px 10px; } }
     @media(max-width:600px) { .toolbar { padding:10px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; } .media { aspect-ratio:2/3; } .card-info { padding:7px; gap:5px; } .post-meta { font-size:10px; } .fav { padding:4px 6px; } }
   </style>
@@ -314,8 +313,6 @@ function init() {
     function setProxiedImage(image, sourceUrl) {
       const proxyUrl = danbooruImageProxyUrl(sourceUrl);
       if (!proxyUrl) return;
-      image.style.width = "100%";
-      image.style.height = "100%";
       const indicator = document.createElement("span");
       indicator.className = "media-loading";
       indicator.textContent = "Loading image…";
