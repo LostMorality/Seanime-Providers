@@ -582,7 +582,7 @@
     "type": "plugin",
     "language": "javascript",
     "lang": "multi",
-    "icon": "",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/waifudex.jpg",
     "website": "https://danbooru.donmai.us/"
   }
 ]
