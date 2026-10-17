@@ -1,7 +1,7 @@
 class Provider {
   constructor() {
     this.anilistUrl = "https://graphql.anilist.co";
-    this.shiroBase = "https://shiro.so";
+    this.shiroBase = "https://anv.to";
     this.userAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36";
   }
 
