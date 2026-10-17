@@ -198,6 +198,7 @@
       function copyText(text) { navigator.clipboard?.writeText(text).then(() => showToast("Copied to clipboard")).catch(() => showToast("Copy failed", true)); }
       function valueText(value) { if (value === undefined || value === null || value === "") return "—"; if (Array.isArray(value)) return value.join(", "); if (typeof value === "object") return Object.entries(value).map(([key, val]) => `${key}: ${valueText(val)}`).join(" · "); return String(value); }
       function normalized(value) { return valueText(value).toLocaleLowerCase(); }
+      function authorNames(value) { return String(value || "").split(/\s*&\s*/).map(name => name.trim()).filter(Boolean); }
       function typeLabel(type) { return ({ plugin: "Plugin", "onlinestream-provider": "Online stream", "manga-provider": "Manga", "anime-torrent-provider": "Torrent" })[type] || type || "Extension"; }
       function categoryMatches(item) { return state.category === "all" || item.type === state.category; }
 
@@ -220,7 +221,7 @@
       function currentItems() {
         const query = state.query.trim().toLocaleLowerCase();
         return state.items.filter(item => {
-          if (!categoryMatches(item) || (state.author && item.author !== state.author) || (state.language && item.contentLanguage !== state.language)) return false;
+          if (!categoryMatches(item) || (state.author && !authorNames(item.author).includes(state.author)) || (state.language && item.contentLanguage !== state.language)) return false;
           const haystack = [item.name, item.id, item.description, item.author, item.type, item.language, item.contentLanguage, item.version, item.website, item.episodeServers, item.supportsDub].map(normalized).join(" ");
           return !query || haystack.includes(query);
         });
@@ -329,7 +330,7 @@
           const catalog = await response.json(); const rawItems = Array.isArray(catalog) ? catalog : Object.values(catalog).flat().filter(value => value && typeof value === "object");
           $("#data-status").textContent = `Loading ${rawItems.length} manifests…`;
           state.items = await Promise.all(rawItems.map(async item => enrichItem(item, await getManifest(item))));
-          const authors = [...new Set(state.items.map(item => item.author).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+          const authors = [...new Set(state.items.flatMap(item => authorNames(item.author)))].sort((a, b) => a.localeCompare(b));
           const languages = [...new Set(state.items.map(item => item.contentLanguage).filter(Boolean))].sort((a, b) => a.localeCompare(b));
           updateSelect($("#author-filter"), authors, "All authors"); updateSelect($("#language-filter"), languages, "All languages");
           $("#data-status").textContent = `${state.items.length} extensions · ${state.items.filter(item => item.manifestLoaded).length} manifests parsed`;
