@@ -178,8 +178,9 @@
         "anime-news-1.png", "anime-news-2.png",
         "character-info-plus-1.jpg", "cookie-clicker-1.png",
         "ln-reader-1.png", "ln-reader-2.png", "ln-reader-3.png",
+        "waifudex-1.png",
       ];
-      const previewSlugAliases = { "anilist-activity": "anilist-activities", "characters-info-plus": "character-info-plus" };
+      const previewSlugAliases = { "anilist-activity": "anilist-activities", "characters-info-plus": "character-info-plus", "waifu-dex": "waifudex" };
       const previewsBySlug = previewFiles.reduce((groups, filename) => {
         const match = filename.match(/^(.+)-(\d+)\.([a-z0-9]+)$/i);
         if (!match) return groups;
