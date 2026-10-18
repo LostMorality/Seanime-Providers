@@ -126,7 +126,3 @@ Or
 ### Extra info
 
 - [License](./LICENSE)
-
-### Other related projects (Made by me)
-
-- [Seanime Android](https://github.com/Pal-droid/seanime-android) ***DEPRECATED***
