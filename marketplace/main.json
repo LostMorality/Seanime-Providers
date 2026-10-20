@@ -562,6 +562,18 @@
     "website": "https://animeunion.tv"
   },
   {
+    "id": "animetvplus",
+    "name": "AniTVPlus",
+    "description": "Search anime on AniTVPlus and stream available episodes with HLS playback and subtitle metadata.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/animetvplus/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://animetvplus.xyz/favicon.ico",
+    "website": "https://animetvplus.xyz/"
+  },
+  {
     "id": "waifu-dex",
     "name": "WaifuDex",
     "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback.",
