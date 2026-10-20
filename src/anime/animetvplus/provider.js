@@ -80,10 +80,9 @@ class Provider {
     if (!match) throw new Error("Invalid AniTVPlus episode ID");
     const [, malId, streamEpisode] = match;
     const apiUrl = `${this.embedBase}/hls3/uq/${encodeURIComponent(malId)}?episode=${encodeURIComponent(streamEpisode)}`;
-    const browserHeaders = {
+    const headers = {
       Accept: "*/*",
       "Accept-Language": "en-US,en;q=0.9",
-      "If-Modified-Since": "Tue, 20 Oct 2026 14:22:40 GMT",
       Origin: this.streamOrigin,
       Priority: "u=1, i",
       Referer: `${this.streamOrigin}/`,
@@ -95,15 +94,7 @@ class Provider {
       "Sec-Fetch-Site": "cross-site",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
     };
-    const subtitleHeaders = {
-      "Sec-CH-UA-Platform": '"Windows"',
-      Referer: `${this.streamOrigin}/`,
-      "Accept-Language": "en-US,en;q=0.9",
-      "Sec-CH-UA": browserHeaders["Sec-CH-UA"],
-      "User-Agent": browserHeaders["User-Agent"],
-      "Sec-CH-UA-Mobile": "?0",
-    };
-    const response = await fetch(apiUrl, { headers: browserHeaders });
+    const response = await fetch(apiUrl, { headers });
     const payload = await response.json();
     if (!payload?.m3u8) throw new Error("AniTVPlus did not return an HLS playlist");
 
@@ -112,7 +103,7 @@ class Provider {
     if (payload.meta) {
       try {
         const metaUrl = new URL(payload.meta, apiUrl).toString();
-        const metaResponse = await fetch(metaUrl, { headers: browserHeaders });
+        const metaResponse = await fetch(metaUrl, { headers });
         const meta = await metaResponse.json();
         subtitles = (Array.isArray(meta?.subs) ? meta.subs : [])
           .filter(track => track?.file)
@@ -132,12 +123,12 @@ class Provider {
       server: "AniTVPlus",
       // Seanime applies EpisodeServer headers to subtitle requests; the public
       // VideoSubtitle shape has no per-track headers field.
-      headers: subtitleHeaders,
+      headers,
       videoSources: [{
         url: playlistUrl,
         quality: "auto",
         type: "m3u8",
-        headers: browserHeaders,
+        headers,
         subtitles,
       }],
     };
