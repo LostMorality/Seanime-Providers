@@ -109,7 +109,7 @@ class Provider {
           .filter(track => track?.file)
           .map((track, index) => ({
             id: String(track.label || track.lang || `subtitle-${index + 1}`),
-            url: this.resolveSubtitleUrl(track.file, playlistUrl),
+            url: this.resolveSubtitleUrl(track.file, metaUrl),
             language: track.lang || this.languageCode(track.label),
             label: track.label || track.lang || `Subtitle ${index + 1}`,
             isDefault: Boolean(track.default),
@@ -134,13 +134,15 @@ class Provider {
     };
   }
 
-  resolveSubtitleUrl(file, playlistUrl) {
+  resolveSubtitleUrl(file, metaUrl) {
     const value = String(file).trim();
-    if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return new URL(value, playlistUrl).toString();
-    // Metadata paths such as "/subs/english.vtt" are relative to the HLS
-    // bundle directory, not the CDN host root.
+    if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return new URL(value, metaUrl).toString();
+    // The API's meta.json and HLS playlist live in the same bundle directory.
+    // Metadata paths such as "/subs/english.vtt" must stay beneath that
+    // directory rather than resolving from the CDN host root.
     const relativePath = value.replace(/^\/+/, "");
-    return new URL(relativePath, new URL(".", playlistUrl)).toString();
+    const bundleDirectory = new URL(".", metaUrl);
+    return new URL(relativePath, bundleDirectory).toString();
   }
 
   extractInitialCard(html) {

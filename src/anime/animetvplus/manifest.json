@@ -3,7 +3,7 @@
   "name": "AniTVPlus",
   "description": "Search anime on AniTVPlus and stream available episodes with HLS playback and subtitle metadata.",
   "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/animetvplus/manifest.json",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Pal",
   "type": "onlinestream-provider",
   "language": "javascript",
