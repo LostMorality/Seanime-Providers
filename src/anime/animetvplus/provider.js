@@ -8,7 +8,7 @@ class Provider {
 
   getSettings() {
     return {
-      episodeServers: ["AniTVPlus"],
+      episodeServers: ["Default"],
       supportsDub: false,
     };
   }
@@ -126,7 +126,7 @@ class Provider {
     }
 
     return {
-      server: "AniTVPlus",
+      server: "Default",
       headers,
       videoSources: [{
         url: playlistUrl,

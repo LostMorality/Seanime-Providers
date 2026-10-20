@@ -570,7 +570,7 @@
     "type": "onlinestream-provider",
     "language": "javascript",
     "lang": "multi",
-    "icon": "https://animetvplus.xyz/favicon.ico",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/main/public/animetvplus.png",
     "website": "https://animetvplus.xyz/"
   },
   {
