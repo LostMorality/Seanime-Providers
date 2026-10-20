@@ -109,7 +109,7 @@ class Provider {
           .filter(track => track?.file)
           .map((track, index) => ({
             id: String(track.label || track.lang || `subtitle-${index + 1}`),
-            url: new URL(track.file, playlistUrl).toString(),
+            url: this.resolveSubtitleUrl(track.file, playlistUrl),
             language: track.lang || this.languageCode(track.label),
             label: track.label || track.lang || `Subtitle ${index + 1}`,
             isDefault: Boolean(track.default),
@@ -132,6 +132,15 @@ class Provider {
         subtitles,
       }],
     };
+  }
+
+  resolveSubtitleUrl(file, playlistUrl) {
+    const value = String(file).trim();
+    if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return new URL(value, playlistUrl).toString();
+    // Metadata paths such as "/subs/english.vtt" are relative to the HLS
+    // bundle directory, not the CDN host root.
+    const relativePath = value.replace(/^\/+/, "");
+    return new URL(relativePath, new URL(".", playlistUrl)).toString();
   }
 
   extractInitialCard(html) {
