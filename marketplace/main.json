@@ -569,7 +569,7 @@
     "author": "Pal",
     "type": "onlinestream-provider",
     "language": "javascript",
-    "lang": "en",
+    "lang": "multi",
     "icon": "https://animetvplus.xyz/favicon.ico",
     "website": "https://animetvplus.xyz/"
   },
