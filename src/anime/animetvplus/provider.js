@@ -80,12 +80,30 @@ class Provider {
     if (!match) throw new Error("Invalid AniTVPlus episode ID");
     const [, malId, streamEpisode] = match;
     const apiUrl = `${this.embedBase}/hls3/uq/${encodeURIComponent(malId)}?episode=${encodeURIComponent(streamEpisode)}`;
-    const headers = {
-      Accept: "application/json",
+    const browserHeaders = {
+      Accept: "*/*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "If-Modified-Since": "Tue, 20 Oct 2026 14:22:40 GMT",
       Origin: this.streamOrigin,
-      Referer: `${this.embedBase}/hls3/uq/${encodeURIComponent(malId)}?episode=${encodeURIComponent(streamEpisode)}`,
+      Priority: "u=1, i",
+      Referer: `${this.streamOrigin}/`,
+      "Sec-CH-UA": '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+      "Sec-CH-UA-Mobile": "?0",
+      "Sec-CH-UA-Platform": '"Windows"',
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "cross-site",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
     };
-    const response = await fetch(apiUrl, { headers });
+    const subtitleHeaders = {
+      "Sec-CH-UA-Platform": '"Windows"',
+      Referer: `${this.streamOrigin}/`,
+      "Accept-Language": "en-US,en;q=0.9",
+      "Sec-CH-UA": browserHeaders["Sec-CH-UA"],
+      "User-Agent": browserHeaders["User-Agent"],
+      "Sec-CH-UA-Mobile": "?0",
+    };
+    const response = await fetch(apiUrl, { headers: browserHeaders });
     const payload = await response.json();
     if (!payload?.m3u8) throw new Error("AniTVPlus did not return an HLS playlist");
 
@@ -94,7 +112,7 @@ class Provider {
     if (payload.meta) {
       try {
         const metaUrl = new URL(payload.meta, apiUrl).toString();
-        const metaResponse = await fetch(metaUrl, { headers });
+        const metaResponse = await fetch(metaUrl, { headers: browserHeaders });
         const meta = await metaResponse.json();
         subtitles = (Array.isArray(meta?.subs) ? meta.subs : [])
           .filter(track => track?.file)
@@ -112,12 +130,14 @@ class Provider {
 
     return {
       server: "AniTVPlus",
-      headers: { Origin: this.streamOrigin, Referer: this.streamOrigin },
+      // Seanime applies EpisodeServer headers to subtitle requests; the public
+      // VideoSubtitle shape has no per-track headers field.
+      headers: subtitleHeaders,
       videoSources: [{
         url: playlistUrl,
         quality: "auto",
         type: "m3u8",
-        headers: { Origin: this.streamOrigin, Referer: this.streamOrigin },
+        headers: browserHeaders,
         subtitles,
       }],
     };
