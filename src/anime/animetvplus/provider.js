@@ -16,7 +16,6 @@ class Provider {
   async search(query) {
     const url = `${this.searchBase}/v1/search?q=${encodeURIComponent(query.query)}&offset=0&limit=20`;
     const response = await fetch(url, { headers: { Accept: "application/json" } });
-    // Some AniTVPlus endpoints return a useful JSON body with a non-2xx status.
     const payload = await response.json();
     const results = Array.isArray(payload?.data) ? payload.data : [];
     const items = results
@@ -35,7 +34,6 @@ class Provider {
     const malId = String(id).split(":", 1)[0];
     if (!/^\d+$/.test(malId)) return [];
 
-    // The page may respond with HTTP 404 while still returning its Astro payload.
     const response = await fetch(`${this.siteBase}/anime/${encodeURIComponent(malId)}`, {
       headers: { Accept: "text/html,application/xhtml+xml" },
     });
@@ -104,16 +102,24 @@ class Provider {
       try {
         const metaUrl = new URL(payload.meta, apiUrl).toString();
         const metaResponse = await fetch(metaUrl, { headers });
+        // Use the final URL after redirects as the base for resolving subtitle
+        // paths. CDN edges (e.g. edge.animetvplus.xyz) sometimes rewrite the
+        // meta.json location.
+        const resolvedMetaUrl = metaResponse.url || metaUrl;
         const meta = await metaResponse.json();
         subtitles = (Array.isArray(meta?.subs) ? meta.subs : [])
           .filter(track => track?.file)
-          .map((track, index) => ({
-            id: String(track.label || track.lang || `subtitle-${index + 1}`),
-            url: this.resolveSubtitleUrl(track.file, metaUrl),
-            language: track.lang || this.languageCode(track.label),
-            label: track.label || track.lang || `Subtitle ${index + 1}`,
-            isDefault: Boolean(track.default),
-          }));
+          .map((track, index) => {
+            const subtitleUrl = this.resolveSubtitleUrl(track.file, resolvedMetaUrl);
+            console.log(`[AniTVPlus] Subtitle base=${resolvedMetaUrl} file=${track.file} -> ${subtitleUrl}`);
+            return {
+              id: String(track.label || track.lang || `subtitle-${index + 1}`),
+              url: subtitleUrl,
+              language: track.lang || this.languageCode(track.label),
+              label: track.label || track.lang || `Subtitle ${index + 1}`,
+              isDefault: Boolean(track.default),
+            };
+          });
       } catch (error) {
         console.log(`[AniTVPlus] Could not load subtitle metadata: ${error?.message || error}`);
       }
@@ -121,8 +127,6 @@ class Provider {
 
     return {
       server: "AniTVPlus",
-      // Seanime applies EpisodeServer headers to subtitle requests; the public
-      // VideoSubtitle shape has no per-track headers field.
       headers,
       videoSources: [{
         url: playlistUrl,
@@ -136,13 +140,18 @@ class Provider {
 
   resolveSubtitleUrl(file, metaUrl) {
     const value = String(file).trim();
+    // Absolute URLs pass through unchanged.
     if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(value)) return new URL(value, metaUrl).toString();
-    // The API's meta.json and HLS playlist live in the same bundle directory.
-    // Metadata paths such as "/subs/english.vtt" must stay beneath that
-    // directory rather than resolving from the CDN host root.
+    // Strip any leading slashes so the path stays beneath the bundle directory.
     const relativePath = value.replace(/^\/+/, "");
-    const bundleDirectory = new URL(".", metaUrl);
-    return new URL(relativePath, bundleDirectory).toString();
+    // Drop the query string and the "meta.json" filename, keeping the bundle
+    // directory (e.g. /hls2/14/201514/q3e6l5wtsehj_n/).
+    const cleanMetaUrl = metaUrl.split(/[?#]/, 1)[0];
+    const bundleDirectory = cleanMetaUrl.replace(/[^/]*$/, "");
+    console.log(`[AniTVPlus] resolve clean=${cleanMetaUrl} dir=${bundleDirectory} rel=${relativePath}`);
+    // Pure string concatenation — don't rely on `new URL(relative, base)` which
+    // behaves inconsistently inside the extension sandbox.
+    return bundleDirectory + relativePath;
   }
 
   extractInitialCard(html) {
