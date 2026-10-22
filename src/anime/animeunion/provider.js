@@ -88,6 +88,7 @@ class Provider {
           // Carry episodeCount into findEpisodes without an extra request.
           id: `${slug}|${episodeCount}`,
           title: anime.titleEng || anime.title || anime.titleIta || slug,
+          image: anime.coverImage || anime.bannerImage,
           url: `${this.siteBase}/anime/${encodeURIComponent(slug)}`,
           subOrDub,
         };
