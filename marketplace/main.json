@@ -584,5 +584,17 @@
     "lang": "multi",
     "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/waifudex.jpg",
     "website": "https://danbooru.donmai.us/"
+  },
+  {
+    "id": "shonen",
+    "name": "Shonen",
+    "description": "Shonen.to sub anime search and streaming provider.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/shonen/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/shonen.png",
+    "website": "https://shonen.to"
   }
 ]
