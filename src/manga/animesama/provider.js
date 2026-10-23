@@ -31,12 +31,16 @@ class Provider {
     }
 
     async search(opts) {
-        const url = `${this.api}/catalogue/?search=${encodeURIComponent(opts.query)}`;
+        const url = `${this.api}/template-php/defaut/fetch.php`;
 
         try {
             const response = await fetch(url, {
-                method: 'GET',
-                headers: this.getHeaders(),
+                method: 'POST',
+                headers: {
+                    ...this.getHeaders(),
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `query=${encodeURIComponent(opts.query)}`,
             });
 
             if (!response.ok) return [];
@@ -53,25 +57,25 @@ class Provider {
      */
     parseSearchResults(html) {
         const results = [];
-        const cardRegex = /<div[^>]*class=["'][^"']*catalog-card[^"']*["'][^>]*>([\s\S]*?)<\/a>\s*<\/div>/g;
+        const cardRegex = /<a\s[^>]*class=["']asn-search-result["'][^>]*>[\s\S]*?<\/a>/g;
 
         for (const cardMatch of html.matchAll(cardRegex)) {
-            const card = cardMatch[1];
+            const card = cardMatch[0];
 
             // Extract slug from href="https://anime-sama.to/catalogue/<slug>"
             const hrefMatch = card.match(/href=["'](?:https?:\/\/[^/"']*)?\/catalogue\/([^/"']+)\/?["']/);
             if (!hrefMatch) continue;
 
             // Skip results that don't have a "Scans" (manga) entry
-            const typesMatch = card.match(/<p[^>]*class=["'][^"']*info-value[^"']*["'][^>]*>([^<]*)<\/p>/);
+            const typesMatch = card.match(/<p[^>]*class=["'][^"']*asn-search-meta[^"']*["'][^>]*>([^<]*)<\/p>/);
             if (!typesMatch || !/scans/i.test(typesMatch[1])) continue;
 
             const slug = hrefMatch[1];
-            const titleMatch = card.match(/<h2[^>]*class=["'][^"']*card-title[^"']*["'][^>]*>([^<]*)<\/h2>/);
-            const altMatch = card.match(/<p[^>]*class=["'][^"']*alternate-titles[^"']*["'][^>]*>([^<]*)<\/p>/);
+            const titleMatch = card.match(/<h3[^>]*class=["'][^"']*asn-search-result-title[^"']*["'][^>]*>([\s\S]*?)<\/h3>/);
+            const altMatch = card.match(/<p[^>]*class=["'][^"']*asn-search-result-subtitle[^"']*["'][^>]*>([^<]*)<\/p>/);
             const imgMatch = card.match(/<img[^>]+src=["']([^"']+)["']/);
 
-            const title = titleMatch ? titleMatch[1].trim() : slug;
+            const title = titleMatch?.[1].replace(/\s*\n\s*/g, '').replace(/<[^>]+>/g, '').trim() || slug;
             const synonyms = (altMatch && altMatch[1].trim()) ? [altMatch[1].trim()] : undefined;
 
             results.push({
