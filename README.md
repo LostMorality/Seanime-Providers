@@ -126,3 +126,9 @@ Or
 ### Extra info
 
 - [License](./LICENSE)
+
+### Other related projects
+
+- [Seanime Mobile](https://github.com/Lampe332/seanime-mobile) *(Fork of the original [Seanime Android port](https://github.com/Seanime-contributions/Seanime-Android))*
+
+<img src="https://raw.githubusercontent.com/Lampe332/seanime-mobile/refs/heads/main/docs/images/readme/banner.62632125.png" />
