@@ -109,6 +109,7 @@ class Provider {
       console.log("[AniTVPlus] Primary lookup returned no playlist; trying UQLoad resolver fallback");
       const fallback = await this.resolveUqloadPlaylist(malId, streamEpisode, headers);
       playlistUrl = fallback.playlistUrl;
+      subtitles = fallback.subtitles;
       Object.assign(headers, fallback.headers);
     }
 
@@ -175,11 +176,13 @@ class Provider {
     const html = await embedResponse.text();
     const packedScripts = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) || [];
     let playlistUrl;
+    let subtitles = [];
     for (const script of packedScripts) {
       const unpacked = this.unpackDeanEdwards(script);
       const found = unpacked?.match(/https?:\/\/[^"'\s<>]+?\.m3u8(?:\?[^"'\s<>]*)?/i)?.[0];
       if (found) {
         playlistUrl = found.replace(/&amp;/gi, "&");
+        subtitles = this.extractUqloadSubtitles(unpacked, embedUrl);
         break;
       }
     }
@@ -188,8 +191,40 @@ class Provider {
     const embedOrigin = new URL(embedUrl).origin;
     return {
       playlistUrl,
+      subtitles,
       headers: { Referer: embedUrl, Origin: embedOrigin },
     };
+  }
+
+  extractUqloadSubtitles(playerConfig, embedUrl) {
+    const tracksMatch = String(playerConfig).match(/\btracks\s*:\s*\[([\s\S]*?)\]/);
+    if (!tracksMatch) return [];
+    const trackObjects = tracksMatch[1].match(/\{[^{}]*\}/g) || [];
+    return trackObjects.flatMap((track, index) => {
+      const readString = (key) => {
+        const property = new RegExp(`(?:["']?${key}["']?)\\s*:\\s*(["'])(.*?)\\1`, "s");
+        return property.exec(track)?.[2]?.replace(/\\([\\"'])/g, "$1");
+      };
+      const file = readString("file");
+      const kind = readString("kind");
+      const label = readString("label");
+      if (!file || !/^(?:captions|subtitles)$/i.test(kind || "")) return [];
+      if (/upload captions/i.test(label || "") || /\/empty\.srt(?:$|[?#])/i.test(file)) return [];
+      let url;
+      try {
+        url = new URL(file, embedUrl).toString();
+      } catch {
+        return [];
+      }
+      if (!/^https?:/i.test(url)) return [];
+      return [{
+        id: `uqload-${this.languageCode(label || `subtitle-${index + 1}`)}`,
+        url,
+        language: this.languageCode(label),
+        label: label || `Subtitle ${index + 1}`,
+        isDefault: /(?:["']?default["']?)\s*:\s*true\b/i.test(track),
+      }];
+    });
   }
 
   unpackDeanEdwards(source) {
@@ -310,8 +345,13 @@ class Provider {
 
   languageCode(label) {
     const value = String(label || "").trim().toLowerCase();
-    if (value === "english") return "en";
-    if (value === "japanese") return "ja";
+    const codes = {
+      arabic: "ar", chinese: "zh", english: "en", french: "fr", german: "de",
+      indonesian: "id", italian: "it", japanese: "ja", korean: "ko", malay: "ms",
+      polish: "pl", portuguese: "pt", romanian: "ro", spanish: "es", thai: "th",
+      turkish: "tr", vietnamese: "vi",
+    };
+    if (codes[value]) return codes[value];
     return value || "und";
   }
 }
