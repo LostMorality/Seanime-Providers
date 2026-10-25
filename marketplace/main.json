@@ -596,5 +596,17 @@
     "lang": "multi",
     "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/shonen.png",
     "website": "https://shonen.to"
+  },
+  {
+    "id": "mangastash",
+    "name": "MangaStash",
+    "description": "Search MangaStash and read manga chapters in English.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/manga/mangastash/manifest.json",
+    "author": "Pal",
+    "type": "manga-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/mangastash.ico",
+    "website": "https://mangastash.org"
   }
 ]

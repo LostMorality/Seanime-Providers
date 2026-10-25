@@ -1,0 +1,14 @@
+{
+  "id": "mangastash",
+  "name": "MangaStash",
+  "description": "Search MangaStash and read manga chapters in English.",
+  "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/manga/mangastash/manifest.json",
+  "version": "1.0.0",
+  "author": "Pal",
+  "type": "manga-provider",
+  "language": "javascript",
+  "lang": "en",
+  "website": "https://mangastash.org",
+  "payloadURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/manga/mangastash/provider.js",
+  "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/mangastash.ico"
+}
