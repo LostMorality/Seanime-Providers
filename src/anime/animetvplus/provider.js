@@ -92,13 +92,27 @@ class Provider {
       "Sec-Fetch-Site": "cross-site",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
     };
-    const response = await fetch(apiUrl, { headers });
-    const payload = await response.json();
-    if (!payload?.m3u8) throw new Error("AniTVPlus did not return an HLS playlist");
+    let payload;
+    try {
+      const response = await fetch(apiUrl, { headers });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      payload = await response.json();
+    } catch (error) {
+      console.log(`[AniTVPlus] Primary HLS lookup failed: ${error?.message || error}`);
+    }
 
-    const playlistUrl = new URL(payload.m3u8, apiUrl).toString();
+    let playlistUrl;
     let subtitles = [];
-    if (payload.meta) {
+    if (payload?.m3u8) {
+      playlistUrl = new URL(payload.m3u8, apiUrl).toString();
+    } else {
+      console.log("[AniTVPlus] Primary lookup returned no playlist; trying UQLoad resolver fallback");
+      const fallback = await this.resolveUqloadPlaylist(malId, streamEpisode, headers);
+      playlistUrl = fallback.playlistUrl;
+      Object.assign(headers, fallback.headers);
+    }
+
+    if (payload?.meta) {
       try {
         const metaUrl = new URL(payload.meta, apiUrl).toString();
         const metaResponse = await fetch(metaUrl, { headers });
@@ -136,6 +150,108 @@ class Provider {
         subtitles,
       }],
     };
+  }
+
+  async resolveUqloadPlaylist(malId, episodeNumber, requestHeaders) {
+    const resolverUrl = new URL("/home/api/v1/resolve", this.embedBase);
+    resolverUrl.searchParams.set("mal", malId);
+    resolverUrl.searchParams.set("ep", episodeNumber);
+    const resolverResponse = await fetch(resolverUrl.toString(), {
+      headers: { Accept: "application/json", "User-Agent": requestHeaders["User-Agent"] },
+    });
+    if (!resolverResponse.ok) throw new Error(`AniTVPlus resolver failed (HTTP ${resolverResponse.status})`);
+    const resolved = await resolverResponse.json();
+    const embedUrl = resolved?.uqload?.embed_url;
+    if (!resolved?.ok || !embedUrl) throw new Error("AniTVPlus resolver did not return a UQLoad embed URL");
+
+    const embedResponse = await fetch(embedUrl, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        Referer: resolverUrl.origin + "/",
+        "User-Agent": requestHeaders["User-Agent"],
+      },
+    });
+    if (!embedResponse.ok) throw new Error(`UQLoad embed request failed (HTTP ${embedResponse.status})`);
+    const html = await embedResponse.text();
+    const packedScripts = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) || [];
+    let playlistUrl;
+    for (const script of packedScripts) {
+      const unpacked = this.unpackDeanEdwards(script);
+      const found = unpacked?.match(/https?:\/\/[^"'\s<>]+?\.m3u8(?:\?[^"'\s<>]*)?/i)?.[0];
+      if (found) {
+        playlistUrl = found.replace(/&amp;/gi, "&");
+        break;
+      }
+    }
+    if (!playlistUrl) throw new Error("Could not extract an HLS playlist from the UQLoad embed");
+
+    const embedOrigin = new URL(embedUrl).origin;
+    return {
+      playlistUrl,
+      headers: { Referer: embedUrl, Origin: embedOrigin },
+    };
+  }
+
+  unpackDeanEdwards(source) {
+    const marker = /eval\(function\(p,a,c,k,e,d\)\{[\s\S]*?\}\(/.exec(String(source));
+    if (!marker) return "";
+    let cursor = marker.index + marker[0].length;
+    const readStringLiteral = () => {
+      const quote = source[cursor++];
+      if (quote !== "'" && quote !== '"') throw new Error("Invalid packed-script string");
+      let value = "";
+      while (cursor < source.length) {
+        let character = source[cursor++];
+        if (character === quote) return value;
+        if (character !== "\\") {
+          value += character;
+          continue;
+        }
+        character = source[cursor++];
+        const simpleEscapes = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", v: "\v" };
+        if (Object.prototype.hasOwnProperty.call(simpleEscapes, character)) value += simpleEscapes[character];
+        else if (character === "x" || character === "u") {
+          const digits = character === "x" ? 2 : 4;
+          const code = source.slice(cursor, cursor + digits);
+          if (!new RegExp(`^[0-9a-f]{${digits}}$`, "i").test(code)) throw new Error("Invalid packed-script escape");
+          value += String.fromCharCode(parseInt(code, 16));
+          cursor += digits;
+        } else if (character !== "\n" && character !== "\r") value += character;
+      }
+      throw new Error("Unterminated packed-script string");
+    };
+    const skipWhitespace = () => { while (/\s/.test(source[cursor] || "")) cursor++; };
+    const readNumber = () => {
+      skipWhitespace();
+      const number = /^\d+/.exec(source.slice(cursor));
+      if (!number) throw new Error("Invalid packed-script number");
+      cursor += number[0].length;
+      return Number(number[0]);
+    };
+
+    try {
+      const payload = readStringLiteral();
+      skipWhitespace();
+      if (source[cursor++] !== ",") return "";
+      const radix = readNumber();
+      skipWhitespace();
+      if (source[cursor++] !== ",") return "";
+      const count = readNumber();
+      skipWhitespace();
+      if (source[cursor++] !== ",") return "";
+      skipWhitespace();
+      const dictionary = readStringLiteral().split("|");
+      if (radix < 2 || radix > 62 || count > 10000) return "";
+      return payload.replace(/\b\w+\b/g, (word) => {
+        const index = parseInt(word, radix);
+        return Number.isInteger(index) && index >= 0 && index < count && dictionary[index]
+          ? dictionary[index]
+          : word;
+      });
+    } catch (error) {
+      console.log(`[AniTVPlus] Could not unpack UQLoad player script: ${error?.message || error}`);
+      return "";
+    }
   }
 
   resolveSubtitleUrl(file, metaUrl) {
