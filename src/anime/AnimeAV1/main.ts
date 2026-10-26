@@ -1,82 +1,4 @@
-declare type SearchResult = {
-    id: string;
-    title: string;
-    url: string;
-    subOrDub: SubOrDub;
-};
-
-declare type SubOrDub = "sub" | "dub" | "both";
-
-declare type EpisodeDetails = {
-    id: string;
-    number: number;
-    url: string;
-    title?: string;
-};
-
-declare type EpisodeServer = {
-    server: string;
-    headers: {
-        [key: string]: string;
-    };
-    videoSources: VideoSource[];
-};
-
-declare type VideoSourceType = "mp4" | "m3u8" | "unknown";
-
-declare type VideoSource = {
-    url: string;
-    type: VideoSourceType;
-    quality: string;
-    label?: string;
-    subtitles: VideoSubtitle[];
-};
-
-declare type VideoSubtitle = {
-    id: string;
-    url: string;
-    language: string;
-    isDefault: boolean;
-};
-
-declare interface Media {
-    id: number;
-    idMal?: number;
-    status?: string;
-    format?: string;
-    englishTitle?: string;
-    romajiTitle?: string;
-    episodeCount?: number;
-    absoluteSeasonOffset?: number;
-    synonyms: string[];
-    isAdult: boolean;
-    startDate?: FuzzyDate;
-}
-
-declare interface FuzzyDate {
-    year: number;
-    month?: number;
-    day?: number;
-}
-
-declare type SearchOptions = {
-    media: Media;
-    query: string;
-    dub: boolean;
-    year?: number;
-};
-
-declare type Settings = {
-    episodeServers: string[];
-    supportsDub: boolean;
-};
-
-declare abstract class AnimeProvider {
-    search(opts: SearchOptions): Promise<SearchResult[]>;
-    findEpisodes(id: string): Promise<EpisodeDetails[]>;
-    findEpisodeServer(episode: EpisodeDetails, server: string): Promise<EpisodeServer>;
-    getSettings(): Settings;
-}
+/// <reference path="../online-streaming-provider.d.ts" />
 
 declare interface FetchOptions {
     method?: string;
@@ -364,27 +286,32 @@ function bestScore(results: SearchResult[], titles: string[]): number {
     return best;
 }
 
-const SERVER_FOUND_MS = 5 * 60 * 1000;
+type ServerOutcome = {
+    found?: EpisodeServer;
+    error?: string;
+    at: number;
+};
+
+const SERVER_FAILURE_MS = 20 * 1000;
+
+const SERVER_FOUND_MS = 24 * 60 * 1000;
 
 async function resolveServers(key: string, servers: string[], wanted: string, resolve: (server: string) => Promise<EpisodeServer>): Promise<EpisodeServer> {
+    const now = Date.now();
     const held = remember<{
-        [server: string]: EpisodeServer;
+        [server: string]: ServerOutcome;
     }>(key, SERVER_FOUND_MS) || {};
-    if (!held[wanted]) {
-        const missing = servers.filter(server => !held[server]);
-        const errors: {
-            [server: string]: string;
-        } = {};
-        await Promise.all(missing.map(server => resolve(server).then(found => {
-            held[server] = found;
-        }, err => {
-            errors[server] = err instanceof Error ? err.message : String(err);
-        })));
+    const usable = (outcome: ServerOutcome | undefined) => !!outcome && now - outcome.at < (outcome.found ? SERVER_FOUND_MS : SERVER_FAILURE_MS);
+    if (!usable(held[wanted])) {
+        const stale = servers.filter(server => !usable(held[server]));
+        const settled = await Promise.all(stale.map(server => resolve(server).then((found): ServerOutcome => ({ found, at: Date.now() }), (err): ServerOutcome => ({ error: err instanceof Error ? err.message : String(err), at: Date.now() }))));
+        stale.forEach((server, i) => (held[server] = settled[i]));
         keep(key, held);
-        if (!held[wanted])
-            throw new Error(errors[wanted] || `Servidor desconocido: ${wanted}`);
     }
-    return held[wanted];
+    const outcome = held[wanted];
+    if (outcome && outcome.found)
+        return outcome.found;
+    throw new Error(outcome && outcome.error || `Servidor desconocido: ${wanted}`);
 }
 
 const HLS_HEADERS: {
