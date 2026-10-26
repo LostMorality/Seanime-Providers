@@ -12,18 +12,6 @@
     "website": ""
   },
   {
-    "id": "manhwaweb",
-    "name": "manhwaweb",
-    "description": "Manhwaweb is a spanish manga provider for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/ManhwaWeb/manifest.json",
-    "author": "Pal & jabifx",
-    "type": "manga-provider",
-    "language": "javascript",
-    "lang": "es",
-    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/manhwaweb.png",
-    "website": ""
-  },
-  {
     "id": "donghuastream",
     "name": "DonghuaStream",
     "description": "DonghuaStream is an english donghua sub provider for Seanime",
@@ -48,30 +36,6 @@
     "website": ""
   },
   {
-    "id": "mangacloud",
-    "name": "MangaCloud",
-    "description": "MangaCloud is a manga provider for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/mangacloud/manifest.json",
-    "author": "Pal",
-    "type": "manga-provider",
-    "language": "javascript",
-    "lang": "en",
-    "icon": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/public/mangacloud.png",
-    "website": "https://mangacloud.org"
-  },
-  {
-    "id": "mangadot",
-    "name": "MangaDot",
-    "description": "MangaDot is a manga provider for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/mangadot/manifest.json",
-    "author": "Pal",
-    "type": "manga-provider",
-    "language": "javascript",
-    "lang": "en",
-    "icon": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/public/mangadot.ico",
-    "website": "https://mangadot.net"
-  },
-  {
     "id": "mangakatana",
     "name": "MangaKatana",
     "description": "MangaKatana is a manga provider for Seanime",
@@ -84,19 +48,7 @@
     "website": "https://mangakatana.com"
   },
   {
-    "id": "allmangaanime",
-    "name": "AllManga (Anime)",
-    "description": "AllManga (Anime) is an Anime provider for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/allmanga/manifest.json",
-    "author": "Pal",
-    "type": "onlinestream-provider",
-    "language": "javascript",
-    "lang": "en",
-    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/allmanga.png",
-    "website": ""
-  },
-  {
-    "id": "animeAV1",
+    "id": "animeav1",
     "name": "AnimeAV1",
     "description": "AnimeAV1 is an Anime provider for spanish anime for Seanime",
     "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/AnimeAV1/manifest.json",
@@ -105,18 +57,6 @@
     "language": "javascript",
     "lang": "es",
     "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/animeav1.png",
-    "website": ""
-  },
-  {
-    "id": "anidb",
-    "name": "AniDB",
-    "description": "AniDB is an Anime provider for english sub & dub for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/anidb/manifest.json",
-    "author": "Pal",
-    "type": "onlinestream-provider",
-    "language": "javascript",
-    "lang": "en",
-    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/anidb.png",
     "website": ""
   },
   {
@@ -177,6 +117,18 @@
     "language": "javascript",
     "lang": "en",
     "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/asurascans.webp",
+    "website": ""
+  },
+  {
+    "id": "kuramanga",
+    "name": "KuraManga",
+    "description": "KuraManga is a manhwa provider for Seanime",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/src/manga/kuramanga/manifest.json",
+    "author": "Pal",
+    "type": "manga-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/kuramanga.ico",
     "website": ""
   },
   {
@@ -300,18 +252,6 @@
     "website": ""
   },
   {
-    "id": "agefans",
-    "name": "AgeFans",
-    "description": "AgeFans is an online streaming provider for chinese sub anime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/agefans/manifest.json",
-    "author": "Pal",
-    "type": "onlinestream-provider",
-    "language": "javascript",
-    "lang": "zh",
-    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/agefans.ico",
-    "website": ""
-  },
-  {
     "id": "hentaiworld",
     "name": "HentaiWorld",
     "description": "HentaiWorld is an online streaming provider for italian sub/dub hentai",
@@ -396,6 +336,18 @@
     "website": ""
   },
   {
+    "id": "characters-info-plus",
+    "name": "Characters info+",
+    "description": "Show AniList character information in an animated hover card on anime entry pages.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/main/src/plugins/characters-info-plus/manifest.json",
+    "author": "Pal",
+    "type": "plugin",
+    "language": "typescript",
+    "lang": "MULTI",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/main/public/char-plus-info.png",
+    "website": ""
+  },
+  {
     "id": "antiseeding",
     "name": "Anti-Seeding",
     "description": "Prevent torrent seeding.",
@@ -410,13 +362,13 @@
   {
     "id": "anime-news",
     "name": "Anime News",
-    "description": "Get Anime news in your Seanime instance!",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/aninewsnet-seanime/refs/heads/main/manifest.json",
+    "description": "Read the latest Anime News Network headlines in a dedicated WebView.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/animenewsnetwork/manifest.json",
     "author": "SyntaxSama & Pal",
     "type": "plugin",
     "language": "typescript",
     "lang": "EN",
-    "icon": "https://raw.githubusercontent.com/Pal-droid/aninewsnet-seanime/refs/heads/main/animenewsnetwork.png",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/animenewsnetwork.png",
     "website": ""
   },
   {
@@ -437,18 +389,6 @@
     "description": "A plugin for viewing your friend's and your Anilist activity in Seanime made by Pal.",
     "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/src/plugins/anilist-activities/manifest.json",
     "author": "Pal",
-    "type": "plugin",
-    "language": "typescript",
-    "lang": "MULTI",
-    "icon": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/public/anilist.ico",
-    "website": ""
-  },
-  {
-    "id": "account-switcher",
-    "name": "Account Switcher",
-    "description": "Allows you to switch between multiple AniList accounts swiftly.",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/src/plugins/acc-switcher-al/manifest.json",
-    "author": "FracturedSora & Pal",
     "type": "plugin",
     "language": "typescript",
     "lang": "MULTI",
@@ -480,22 +420,22 @@
     "website": ""
   },
   {
-    "id": "komikcast",
-    "name": "KomikCast",
-    "description": "KomikCast is a manga provider for Seanime",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/komikcast/manifest.json",
-    "author": "Pal",
-    "type": "manga-provider",
-    "language": "javascript",
-    "lang": "id",
-    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/komikcast.png",
-    "website": ""
-  },
-  {
     "id": "default-torrent-filters",
     "name": "Default Torrent Filters",
     "description": "Automatically applies your preferred filters (Multi Subs, Dubbed, video/audio codecs) to torrent search results",
     "manifestURI": "https://raw.githubusercontent.com/Ari-03/Seanime-Providers/main/src/plugins/default-torrent-filters/manifest.json",
+    "author": "Ari-03",
+    "type": "plugin",
+    "language": "typescript",
+    "lang": "multi",
+    "icon": "",
+    "website": ""
+  },
+  {
+    "id": "download-memory",
+    "name": "Download Memory",
+    "description": "Remembers every episode you have already downloaded so the Auto Downloader does not grab it again after Shoko, Sonarr or a rename script moves it out of your library",
+    "manifestURI": "https://raw.githubusercontent.com/Ari-03/Seanime-Providers/main/src/plugins/download-memory/manifest.json",
     "author": "Ari-03",
     "type": "plugin",
     "language": "typescript",
@@ -527,30 +467,6 @@
     "website": ""
   },
   {
-    "id": "anibd",
-    "name": "AniBD",
-    "description": "AniBD is an online streaming provider for subbed BD anime in english",
-    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/anibd/manifest.json",
-    "author": "Pal",
-    "type": "onlinestream-provider",
-    "language": "javascript",
-    "lang": "en",
-    "icon": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/public/anibd.jpg",
-    "website": ""
-  },
-  {
-    "id": "anilist-notifications",
-    "name": "AniList Notifications",
-    "description": "View your AniList notifications.",
-    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/anilist-notifications/manifest.json",
-    "author": "Pal",
-    "type": "plugin",
-    "language": "typescript",
-    "lang": "multi",
-    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/anilist.ico",
-    "website": ""
-  },
-  {
     "id": "shademanga",
     "name": "Shade Manga",
     "description": "Proveedor de manga y cómics de Shade Manga.",
@@ -561,5 +477,136 @@
     "lang": "es",
     "icon": "https://raw.githubusercontent.com/yerasuu/My-Seanime-Providers/main/shademanga/icon.png",
     "website": "https://shademanga.com/"
+  },
+  {
+    "id": "dipland-mangaball",
+    "name": "MangaBall",
+    "description": "Multi language manga provider. (Requires Aqua's Utils)",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/mangaball/manifest.json",
+    "author": "dip-land",
+    "type": "manga-provider",
+    "language": "typescript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/mangaball.png",
+    "website": "https://mangaball.net/"
+  },
+  {
+    "id": "dipland-mangafire",
+    "name": "MangaFire",
+    "description": "Multi language manga provider.",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/mangafire/manifest.json",
+    "author": "dip-land",
+    "type": "manga-provider",
+    "language": "typescript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/mangafire.png",
+    "website": "https://mangafire.to/"
+  },
+  {
+    "id": "dipland-mangadot",
+    "name": "MangaDot",
+    "description": "Multi language manga provider. (Requires Aqua's Utils)",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/mangadot/manifest.json",
+    "author": "dip-land",
+    "type": "manga-provider",
+    "language": "typescript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/pal-droid/seanime-providers/refs/heads/main/public/mangadot.png",
+    "website": "https://mangadot.net/"
+  },
+  {
+    "id": "shiro",
+    "name": "Shiro",
+    "description": "Shiro is an AniList-backed online streaming provider for subbed and dubbed anime.",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/anime/shiro/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/main/public/shiro.ico",
+    "website": "https://anv.to/"
+  },
+  {
+    "id": "xcomic",
+    "name": "xComic",
+    "description": "English manga provider for xComic.",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/main/src/manga/xcomic/manifest.json",
+    "author": "Pal",
+    "type": "manga-provider",
+    "language": "javascript",
+    "lang": "en",
+    "website": "https://xcomic.me/"
+  },
+  {
+    "id": "fanfox",
+    "name": "FanFox",
+    "description": "FanFox is a manga provider for Seanime",
+    "manifestURI": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/src/manga/fanfox/manifest.json",
+    "author": "Pal",
+    "type": "manga-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://raw.githubusercontent.com/Pal-droid/Seanime-Providers/refs/heads/main/public/fanfox.png",
+    "website": ""
+  },
+  {
+    "id": "animeunion",
+    "name": "AnimeUnion",
+    "description": "AnimeUnion search and streaming with available subtitle and dub episode sources.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/animeunion/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "it",
+    "icon": "https://animeunion.tv/favicon.ico",
+    "website": "https://animeunion.tv"
+  },
+  {
+    "id": "animetvplus",
+    "name": "AniTVPlus",
+    "description": "Search anime on AniTVPlus and stream available episodes with HLS playback and subtitle metadata.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/animetvplus/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/main/public/animetvplus.png",
+    "website": "https://animetvplus.xyz/"
+  },
+  {
+    "id": "waifu-dex",
+    "name": "WaifuDex",
+    "description": "Browse Danbooru anime imageboard posts with SFW/NSFW ratings, images, GIFs, WebM, and MP4 playback.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/plugins/WaifuDex/manifest.json",
+    "author": "Pal",
+    "type": "plugin",
+    "language": "javascript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/waifudex.jpg",
+    "website": "https://danbooru.donmai.us/"
+  },
+  {
+    "id": "shonen",
+    "name": "Shonen",
+    "description": "Shonen.to sub anime search and streaming provider.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/shonen/manifest.json",
+    "author": "Pal",
+    "type": "onlinestream-provider",
+    "language": "javascript",
+    "lang": "multi",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/shonen.png",
+    "website": "https://shonen.to"
+  },
+  {
+    "id": "mangastash",
+    "name": "MangaStash",
+    "description": "Search MangaStash and read manga chapters in English.",
+    "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/manga/mangastash/manifest.json",
+    "author": "Pal",
+    "type": "manga-provider",
+    "language": "javascript",
+    "lang": "en",
+    "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/mangastash.ico",
+    "website": "https://mangastash.org"
   }
 ]

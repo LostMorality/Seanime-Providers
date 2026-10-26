@@ -1,0 +1,14 @@
+{
+  "id": "shonen",
+  "name": "Shonen",
+  "description": "Shonen.to sub anime search and streaming provider.",
+  "manifestURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/shonen/manifest.json",
+  "version": "1.0.0",
+  "author": "Pal",
+  "type": "onlinestream-provider",
+  "language": "javascript",
+  "lang": "multi",
+  "website": "https://shonen.to",
+  "payloadURI": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/src/anime/shonen/provider.js",
+  "icon": "https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/shonen.png"
+}

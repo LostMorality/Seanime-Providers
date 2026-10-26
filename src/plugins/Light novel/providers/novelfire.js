@@ -218,8 +218,10 @@
                 }
             });
 
-            // Return chapters in correct order (already in order from the HTML)
-            return chapters;
+            // NovelFire renders its chapter list oldest-first (Chapter 1, 2, 3…).
+            // The reader's navigation uses a descending list: Prev increments the
+            // index and Next decrements it. Reverse here to match NovelHall.
+            return chapters.reverse();
         } catch (err) {
             console.error("[novel-plugin] NovelFire Details Error:", err);
             return [];

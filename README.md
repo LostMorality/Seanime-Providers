@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Pal-droid/Seanime-Android/main/images/seanime.png" width="80px"/>
+  <img src="https://raw.githubusercontent.com/Pal-droid/Seanime-Android/main/images/seanime.png" width="100px"/>
 </p>
 
 <h1 align="center">Seanime Providers</h1>
@@ -29,21 +29,20 @@ This repository contains custom <strong><a href="https://github.com/5rahim/seani
 ## Repository Structure
 
 ```
+api/
+└── check.js                     # Marketplace extension checker API
 src/
-├── anime/
-│   └── animeheaven/
-|       ├── ...
-|        ...
-└── manga/
-    ├── mangafreak/
-    │   ├── provider.js
-    │   ├── README.md
-    │   ├── manga-provider.d.ts
-    │   └── manifest.json
-    └── .../
+├── anime/                       # Anime providers
+│   ├── online-streaming-provider.d.ts
+│   └── shiro/
+│       ├── provider.js
+│       └── manifest.json
+└── manga/                       # Manga providers
+    ├── manga-provider.d.ts
+    └── mangafreak/
         ├── provider.js
-        ├── ....
-         ...
+        ├── README.md
+        └── manifest.json
 ```
 
 ---
@@ -75,11 +74,17 @@ https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/manga/man
 
 ## Where can I find the manifest URLs?
 
-[Click here](https://github.com/Pal-droid/Seanime-Providers/tree/main/marketplace/README.md) to see full list of extensions
-
 [Click here](https://seanime-contributions.github.io/Seanime-Providers/) to visit the extensions Marketplace
 
 [Click here](https://github.com/Seanime-contributions/Seanime-Providers/blob/main/src/other/README.md) to see the full list of contributors-maintained external extensions.
+
+---
+
+## Test whether an extension works
+
+<img src="https://raw.githubusercontent.com/Seanime-contributions/Seanime-Providers/refs/heads/main/public/uptime_preview.jpg" />
+
+Use **[this page](https://seanime-contributions.github.io/Seanime-Providers/down-detector.html)** to test selected anime and manga extensions with a search query. Returns search, chapter/episodes & stream/page availability.
 
 ---
 
@@ -102,35 +107,28 @@ Or
 
 * [SyntaxSama / FracturedSora](https://github.com/syntaxsama) *(For the source code of the visual marketplace; Original owner of the Anime News, Always Advanced Search, Cookie clicker, Anti-Seeding plugins and Animepahe extension)*
 
-* [Jabi.fx](https://github.com/9lfx/) *(Original author of the [ManhwaWeb](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/manga/ManhwaWeb/manifest.json), [Oneko](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/plugins/oneko/manifest.json), [UI-Translation](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/plugins/UI-Translation/manifest.json), [AnimeAV1](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/anime/AnimeAV1/manifest.json) extensions & plugins.)*
+* [Jabi.fx](https://github.com/9lfx/) *(Original author of the [Oneko](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/plugins/oneko/manifest.json), [UI-Translation](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/plugins/UI-Translation/manifest.json), [AnimeAV1](https://raw.githubusercontent.com/pal-droid/seanime-providers/main/src/anime/AnimeAV1/manifest.json) extensions & plugins.)*
 
 * [Dantotsu](https://discord.gg/MSJvfJzS7R) *(The Anilist activity plugin is inspired by Dantotsu's stories feature.)*
 
 ### Contributors
 
-| [<img src="https://avatars.githubusercontent.com/u/5020678?v=4" width="64">](https://github.com/yerasuu) | [<img src="https://avatars.githubusercontent.com/u/64171580?v=4" width="64">](https://github.com/Ari-03) | [<img src="https://avatars.githubusercontent.com/u/108695858?v=4" width="64">](https://github.com/Rafou376) |
-|:---:|:---:|:---:|
-| [yerasuu](https://github.com/yerasuu) | [Ari-03](https://github.com/Ari-03) | [Rafou376](https://github.com/Rafou376) |
+<p align="center">
+  <a href="https://github.com/yerasuu"><img src="https://avatars.githubusercontent.com/u/5020678?v=4" width="64" alt="yerasuu"></a>&nbsp;&nbsp;
+  <a href="https://github.com/Ari-03"><img src="https://avatars.githubusercontent.com/u/64171580?v=4" width="64" alt="Ari-03"></a>&nbsp;&nbsp;
+  <a href="https://github.com/Rafou376"><img src="https://avatars.githubusercontent.com/u/108695858?v=4" width="64" alt="Rafou376"></a>&nbsp;&nbsp;
+  <a href="https://github.com/mohaisreal"><img src="https://avatars.githubusercontent.com/u/72509835?v=4" width="64" alt="mohaisreal"></a>&nbsp;&nbsp;
+  <a href="https://github.com/dip-land"><img src="https://avatars.githubusercontent.com/u/82669765?v=4" width="64" alt="dip-land"></a>
+</p>
 
 ---
 
 ### Extra info
 
 - [License](./LICENSE)
-- [TO;DO List](./TO;DO.md)
 
-### Other related projects (Made by me)
+### Other related projects
 
-- [Seanime Android](https://github.com/Pal-droid/seanime-android) ***DEPRECATED***
+- [Seanime Mobile](https://github.com/Lampe332/seanime-mobile) *(Fork of the original [Seanime Android port](https://github.com/Seanime-contributions/Seanime-Android))*
 
-### Other connections
-
-<p align="center">
-  <a href="https://discord.gg/syeSKs4R9H">
-    <img src="https://img.shields.io/discord/1224767201551192224?color=5865F2&label=Discord&logo=discord&logoColor=white" />
-  </a>
-</p>
-
-<p align="center">
-  &#8226; <a href="https://discord.gg/syeSKs4R9H">Seanime Discord server</a>
-</p>
+<img src="https://raw.githubusercontent.com/Lampe332/seanime-mobile/refs/heads/main/docs/images/readme/banner.62632125.png" />
