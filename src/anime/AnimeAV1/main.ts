@@ -138,7 +138,7 @@ declare const CryptoJS: {
 
 const SEARCH_CACHE_MS = 5 * 60 * 1000;
 
-function remember<T>(key: string): T | undefined {
+function remember<T>(key: string, maxAge: number = SEARCH_CACHE_MS): T | undefined {
     if (typeof $store === "undefined" || !$store)
         return undefined;
     try {
@@ -146,7 +146,7 @@ function remember<T>(key: string): T | undefined {
             at: number;
             value: T;
         }>(key);
-        if (hit && hit.value !== undefined && Date.now() - hit.at < SEARCH_CACHE_MS)
+        if (hit && hit.value !== undefined && Date.now() - hit.at < maxAge)
             return hit.value;
     }
     catch (err) {
@@ -364,6 +364,29 @@ function bestScore(results: SearchResult[], titles: string[]): number {
     return best;
 }
 
+const SERVER_FOUND_MS = 5 * 60 * 1000;
+
+async function resolveServers(key: string, servers: string[], wanted: string, resolve: (server: string) => Promise<EpisodeServer>): Promise<EpisodeServer> {
+    const held = remember<{
+        [server: string]: EpisodeServer;
+    }>(key, SERVER_FOUND_MS) || {};
+    if (!held[wanted]) {
+        const missing = servers.filter(server => !held[server]);
+        const errors: {
+            [server: string]: string;
+        } = {};
+        await Promise.all(missing.map(server => resolve(server).then(found => {
+            held[server] = found;
+        }, err => {
+            errors[server] = err instanceof Error ? err.message : String(err);
+        })));
+        keep(key, held);
+        if (!held[wanted])
+            throw new Error(errors[wanted] || `Servidor desconocido: ${wanted}`);
+    }
+    return held[wanted];
+}
+
 const HLS_HEADERS: {
     [key: string]: string;
 } = {
@@ -449,13 +472,36 @@ function padBase64(value: string): string {
 
 const VOE_MARKERS = ["@$", "^^", "~@", "%?", "*~", "!!", "#&"];
 
+const VOE_MIRROR_KEY = "av1:voe:mirror";
+
+const VOE_MIRROR_MS = 24 * 60 * 60 * 1000;
+
 async function extractVoe(embedUrl: string): Promise<VideoSource[]> {
     try {
+        const id = embedUrl.match(/\/e\/([A-Za-z0-9]+)/);
+        const mirror = remember<string>(VOE_MIRROR_KEY, VOE_MIRROR_MS);
+        if (id && mirror) {
+            const html = await fetchWithRetry(`${mirror}/e/${id[1]}`, 0, PLAIN_HEADERS).then(res => res.text(), () => "");
+            const sources = voeSources(html);
+            if (sources.length > 0)
+                return sources;
+        }
         let html = (await fetchWithRetry(embedUrl, 1, PLAIN_HEADERS)).text();
-        const hop = html.match(/window\.location\.href\s*=\s*'(https?:\/\/[^']+)'/);
+        const hop = html.match(/window\.location\.href\s*=\s*'((https?:\/\/[^/']+)[^']*)'/);
         if (hop && html.indexOf("application/json") === -1) {
             html = (await fetchWithRetry(hop[1], 1, PLAIN_HEADERS)).text();
+            keep(VOE_MIRROR_KEY, hop[2]);
         }
+        return voeSources(html);
+    }
+    catch (err) {
+        console.error("AnimeAV1: Voe no respondió como se esperaba:", err);
+    }
+    return [];
+}
+
+function voeSources(html: string): VideoSource[] {
+    try {
         const blob = html.match(/<script type="application\/json">([\s\S]*?)<\/script>/);
         if (!blob)
             return [];
@@ -537,20 +583,42 @@ async function extractByse(embedUrl: string): Promise<VideoSource[]> {
         const plain = decryptAesGcm(byseKeyParts(playback).map((part: string) => base64ToHex(part)).join(""), base64ToHex(playback.iv), base64ToHex(playback.payload));
         if (!plain)
             return [];
-        const sources: any[] = JSON.parse(plain).sources || [];
-        return sources
-            .filter(s => s && typeof s.url === "string")
-            .map((s, i) => ({
-                url: s.url,
+        const sources: any[] = (JSON.parse(plain).sources || []).filter((s: any) => s && typeof s.url === "string");
+        const urls = await Promise.all(sources.map(s => reachableByseUrl(s.url)));
+        const found: VideoSource[] = [];
+        sources.forEach((s, i) => {
+            const url = urls[i];
+            if (!url)
+                return;
+            found.push({
+                url,
                 type: String(s.mime_type || "").indexOf("mpegurl") !== -1 ? "m3u8" : "mp4",
                 quality: s.label || s.height && `${s.height}p` || `auto ${i + 1}`,
                 subtitles: [],
-            }));
+            });
+        });
+        return found;
     }
     catch (err) {
         console.error("AnimeAV1: Byse no respondió como se esperaba:", err);
     }
     return [];
+}
+
+const BYSE_FALLBACK_EDGES = ["https://edge1-frankfurt-sprintcdn.owphbf24.com"];
+
+async function reachableByseUrl(url: string): Promise<string | null> {
+    const origin = url.match(/^https?:\/\/[^/]+/);
+    if (!origin)
+        return url;
+    const path = url.slice(origin[0].length);
+    for (const edge of [origin[0], ...BYSE_FALLBACK_EDGES.filter(e => e !== origin[0])]) {
+        const answered = await fetchWithRetry(edge + path, 0, PLAIN_HEADERS).then(res => res.ok, () => false);
+        if (answered)
+            return edge + path;
+    }
+    console.error(`AnimeAV1: ningún edge de Byse responde para ${origin[0]}`);
+    return null;
 }
 
 function byseKeyParts(playback: {
@@ -570,7 +638,7 @@ class Provider {
     private baseUrl = "https://animeav1.com";
     getSettings(): Settings {
         return {
-            episodeServers: ["Voe", "Byse", "MP4Upload", "UPNShare", "HLS"],
+            episodeServers: ["HLS", "UPNShare", "Byse", "Voe", "MP4Upload"],
             supportsDub: true,
         };
     }
@@ -834,6 +902,11 @@ class Provider {
         catch {
             throw new Error("ID inválido");
         }
+        await this.episodeEmbeds(slug, number);
+        return resolveServers(`av1:servers:${slug}:${number}:${type}`, this.getSettings().episodeServers, server, name => this.resolveServer(slug, number, type, name));
+    }
+
+    private async resolveServer(slug: string, number: number, type: SubOrDub, server: string): Promise<EpisodeServer> {
         try {
             const found = await this.episodeEmbeds(slug, number);
             if (!found)
@@ -879,11 +952,11 @@ class Provider {
             } = {};
             if (wanted === "HLS") {
                 sources = [{
-                    url: embedUrl.replace("/play/", "/m3u8/"),
-                    type: "m3u8",
-                    quality: "auto",
-                    subtitles: [],
-                }];
+                        url: embedUrl.replace("/play/", "/m3u8/"),
+                        type: "m3u8",
+                        quality: "auto",
+                        subtitles: [],
+                    }];
                 headers = HLS_HEADERS;
             }
             else if (wanted === "UPNSHARE") {
