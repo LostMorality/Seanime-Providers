@@ -1,144 +1,9 @@
-declare type SearchResult = {
-    id: string;
-    title: string;
-    url: string;
-    subOrDub: SubOrDub;
-};
-
-declare type SubOrDub = "sub" | "dub" | "both";
-
-declare type EpisodeDetails = {
-    id: string;
-    number: number;
-    url: string;
-    title?: string;
-};
-
-declare type EpisodeServer = {
-    server: string;
-    headers: {
-        [key: string]: string;
-    };
-    videoSources: VideoSource[];
-};
-
-declare type VideoSourceType = "mp4" | "m3u8" | "unknown";
-
-declare type VideoSource = {
-    url: string;
-    type: VideoSourceType;
-    quality: string;
-    label?: string;
-    subtitles: VideoSubtitle[];
-};
-
-declare type VideoSubtitle = {
-    id: string;
-    url: string;
-    language: string;
-    isDefault: boolean;
-};
-
-declare interface Media {
-    id: number;
-    idMal?: number;
-    status?: string;
-    format?: string;
-    englishTitle?: string;
-    romajiTitle?: string;
-    episodeCount?: number;
-    absoluteSeasonOffset?: number;
-    synonyms: string[];
-    isAdult: boolean;
-    startDate?: FuzzyDate;
-}
-
-declare interface FuzzyDate {
-    year: number;
-    month?: number;
-    day?: number;
-}
-
-declare type SearchOptions = {
-    media: Media;
-    query: string;
-    dub: boolean;
-    year?: number;
-};
-
-declare type Settings = {
-    episodeServers: string[];
-    supportsDub: boolean;
-};
-
-declare abstract class AnimeProvider {
-    search(opts: SearchOptions): Promise<SearchResult[]>;
-    findEpisodes(id: string): Promise<EpisodeDetails[]>;
-    findEpisodeServer(episode: EpisodeDetails, server: string): Promise<EpisodeServer>;
-    getSettings(): Settings;
-}
-
-declare interface FetchOptions {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: any;
-    noCloudflareBypass?: boolean;
-    redirect?: "follow" | "manual" | "error";
-    timeout?: number;
-}
-
-declare interface FetchResponse {
-    status: number;
-    statusText: string;
-    ok: boolean;
-    url: string;
-    headers: Record<string, string>;
-    text(): string;
-    json<T = any>(): T;
-}
-
-declare function fetch(url: string, options?: FetchOptions): Promise<FetchResponse>;
-
-declare const $store: {
-    get<T = any>(key: string): T | undefined;
-    set(key: string, value: any): void;
-    has(key: string): boolean;
-    remove(key: string): void;
-} | undefined;
-
-declare interface CryptoBytes {
-    readonly __cryptoBytes: never;
-}
-
-declare interface CryptoEncoder {
-    parse(input: string): CryptoBytes;
-    stringify(input: CryptoBytes): string;
-}
-
-declare const CryptoJS: {
-    AES: {
-        encrypt(message: string, key: CryptoBytes, cfg: {
-            iv: CryptoBytes;
-        }): {
-            toString(encoder: CryptoEncoder): string;
-        };
-        decrypt(base64: string, key: CryptoBytes, cfg: {
-            iv: CryptoBytes;
-        }): {
-            toString(encoder: CryptoEncoder): string;
-        };
-    };
-    enc: {
-        Utf8: CryptoEncoder;
-        Base64: CryptoEncoder;
-        Hex: CryptoEncoder;
-        Latin1: CryptoEncoder;
-    };
-};
+/// <reference path="../online-streaming-provider.d.ts" />
+/// <reference path="../../core.d.ts" />
 
 const SEARCH_CACHE_MS = 5 * 60 * 1000;
 
-function remember<T>(key: string): T | undefined {
+function remember<T>(key: string, maxAge: number = SEARCH_CACHE_MS): T | undefined {
     if (typeof $store === "undefined" || !$store)
         return undefined;
     try {
@@ -146,7 +11,7 @@ function remember<T>(key: string): T | undefined {
             at: number;
             value: T;
         }>(key);
-        if (hit && hit.value !== undefined && Date.now() - hit.at < SEARCH_CACHE_MS)
+        if (hit && hit.value !== undefined && Date.now() - hit.at < maxAge)
             return hit.value;
     }
     catch (err) {
@@ -274,11 +139,11 @@ function seasonOrdinal(title: string): number {
     const trailing = text.match(/\bseason\s+(\d+)\b/);
     if (trailing)
         return parseInt(trailing[1], 10);
-    const roman = text.match(/\s(v?i{1,3})$/);
+    const roman = text.match(/\s(ii|iii|iv|vi|v)$/);
     if (roman) {
         const map: {
             [key: string]: number;
-        } = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
+        } = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
         return map[roman[1]] || 0;
     }
     return 0;
@@ -362,6 +227,76 @@ function bestScore(results: SearchResult[], titles: string[]): number {
         }
     }
     return best;
+}
+
+type ServerOutcome = {
+    found?: EpisodeServer;
+    error?: string;
+    at: number;
+};
+
+const SERVER_FAILURE_MS = 20 * 1000;
+
+const SERVER_FOUND_MS = 24 * 60 * 1000;
+
+async function resolveServers(key: string, servers: string[], wanted: string, resolve: (server: string) => Promise<EpisodeServer>): Promise<EpisodeServer> {
+    const now = Date.now();
+    const held = remember<{
+        [server: string]: ServerOutcome;
+    }>(key, SERVER_FOUND_MS) || {};
+    const usable = (outcome: ServerOutcome | undefined) => !!outcome && now - outcome.at < (outcome.found ? SERVER_FOUND_MS : SERVER_FAILURE_MS);
+    let outcome = held[wanted];
+    const others: Promise<ServerOutcome>[] = [];
+    if (!usable(outcome)) {
+        let own: Promise<ServerOutcome> | undefined;
+        for (const server of servers.filter(name => !usable(held[name]))) {
+            const pending = resolve(server)
+                .then((found): ServerOutcome => ({ found, at: Date.now() }), (err): ServerOutcome => ({ error: err instanceof Error ? err.message : String(err), at: Date.now() }))
+                .then(settled => {
+                const current = remember<{
+                    [server: string]: ServerOutcome;
+                }>(key, SERVER_FOUND_MS) || {};
+                current[server] = settled;
+                keep(key, current);
+                held[server] = settled;
+                return settled;
+            });
+            if (server === wanted)
+                own = pending;
+            else
+                others.push(pending);
+        }
+        if (own)
+            outcome = await own;
+    }
+    if (outcome && outcome.found)
+        return outcome.found;
+    if (outcome) {
+        const ready = servers.map(server => held[server]).find(candidate => candidate && candidate.found);
+        const alternative = ready && ready.found || await firstFound(others);
+        if (alternative) {
+            console.error(`AnimeAV1: ${wanted} falló (${outcome.error}), se usa ${alternative.server}`);
+            const asked = servers.find(name => name.toUpperCase() === wanted);
+            return { ...alternative, server: asked || alternative.server };
+        }
+    }
+    throw new Error(outcome && outcome.error || `Servidor desconocido: ${wanted}`);
+}
+
+function firstFound(pending: Promise<ServerOutcome>[]): Promise<EpisodeServer | undefined> {
+    return new Promise(done => {
+        let left = pending.length;
+        if (left === 0)
+            done(undefined);
+        for (const outcome of pending) {
+            outcome.then(settled => {
+                if (settled.found)
+                    done(settled.found);
+                else if (--left === 0)
+                    done(undefined);
+            });
+        }
+    });
 }
 
 const HLS_HEADERS: {
@@ -449,13 +384,36 @@ function padBase64(value: string): string {
 
 const VOE_MARKERS = ["@$", "^^", "~@", "%?", "*~", "!!", "#&"];
 
+const VOE_MIRROR_KEY = "av1:voe:mirror";
+
+const VOE_MIRROR_MS = 24 * 60 * 60 * 1000;
+
 async function extractVoe(embedUrl: string): Promise<VideoSource[]> {
     try {
+        const id = embedUrl.match(/\/e\/([A-Za-z0-9]+)/);
+        const mirror = remember<string>(VOE_MIRROR_KEY, VOE_MIRROR_MS);
+        if (id && mirror) {
+            const html = await fetchWithRetry(`${mirror}/e/${id[1]}`, 0, PLAIN_HEADERS).then(res => res.text(), () => "");
+            const sources = voeSources(html);
+            if (sources.length > 0)
+                return sources;
+        }
         let html = (await fetchWithRetry(embedUrl, 1, PLAIN_HEADERS)).text();
-        const hop = html.match(/window\.location\.href\s*=\s*'(https?:\/\/[^']+)'/);
+        const hop = html.match(/window\.location\.href\s*=\s*'((https?:\/\/[^/']+)[^']*)'/);
         if (hop && html.indexOf("application/json") === -1) {
             html = (await fetchWithRetry(hop[1], 1, PLAIN_HEADERS)).text();
+            keep(VOE_MIRROR_KEY, hop[2]);
         }
+        return voeSources(html);
+    }
+    catch (err) {
+        console.error("AnimeAV1: Voe no respondió como se esperaba:", err);
+    }
+    return [];
+}
+
+function voeSources(html: string): VideoSource[] {
+    try {
         const blob = html.match(/<script type="application\/json">([\s\S]*?)<\/script>/);
         if (!blob)
             return [];
@@ -499,8 +457,10 @@ async function extractUpnShare(embedUrl: string): Promise<VideoSource[]> {
     try {
         for (let attempt = 0; attempt < 2; attempt++) {
             const res = await fetchWithRetry(api, 1, upnShareHeaders(embedUrl));
-            if (!res.ok)
+            if (!res.ok) {
+                console.error(`AnimeAV1: UPNShare respondió ${res.status} para ${match[2]}`);
                 return [];
+            }
             const plain = CryptoJS.AES.decrypt(CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(res.text().trim())), CryptoJS.enc.Utf8.parse(UPNSHARE_KEY), { iv: CryptoJS.enc.Utf8.parse(UPNSHARE_IV) }).toString(CryptoJS.enc.Utf8);
             const url = JSON.parse(plain).cfNative;
             if (url)
@@ -537,20 +497,38 @@ async function extractByse(embedUrl: string): Promise<VideoSource[]> {
         const plain = decryptAesGcm(byseKeyParts(playback).map((part: string) => base64ToHex(part)).join(""), base64ToHex(playback.iv), base64ToHex(playback.payload));
         if (!plain)
             return [];
-        const sources: any[] = JSON.parse(plain).sources || [];
-        return sources
-            .filter(s => s && typeof s.url === "string")
-            .map((s, i) => ({
-                url: s.url,
-                type: String(s.mime_type || "").indexOf("mpegurl") !== -1 ? "m3u8" : "mp4",
-                quality: s.label || s.height && `${s.height}p` || `auto ${i + 1}`,
-                subtitles: [],
-            }));
+        const sources: any[] = (JSON.parse(plain).sources || []).filter((s: any) => s && typeof s.url === "string");
+        const found: VideoSource[] = [];
+        sources.forEach((s, i) => {
+            const quality = s.label || s.height && `${s.height}p` || `auto ${i + 1}`;
+            const type = String(s.mime_type || "").indexOf("mpegurl") !== -1 ? "m3u8" : "mp4";
+            for (const edge of byseEdgeUrls(s.url))
+                found.push({ url: edge.url, type, quality: edge.label ? `${quality} (${edge.label})` : quality, subtitles: [] });
+        });
+        return found;
     }
     catch (err) {
         console.error("AnimeAV1: Byse no respondió como se esperaba:", err);
     }
     return [];
+}
+
+const BYSE_FALLBACK_EDGES = [{ origin: "https://edge1-frankfurt-sprintcdn.owphbf24.com", label: "Frankfurt" }];
+
+function byseEdgeUrls(url: string): {
+    url: string;
+    label?: string;
+}[] {
+    const origin = url.match(/^https?:\/\/[^/]+/);
+    if (!origin)
+        return [{ url }];
+    const path = url.slice(origin[0].length);
+    return [
+        { url },
+        ...BYSE_FALLBACK_EDGES
+            .filter(edge => edge.origin !== origin[0])
+            .map(edge => ({ url: edge.origin + path, label: edge.label })),
+    ];
 }
 
 function byseKeyParts(playback: {
@@ -570,7 +548,7 @@ class Provider {
     private baseUrl = "https://animeav1.com";
     getSettings(): Settings {
         return {
-            episodeServers: ["Voe", "Byse", "MP4Upload", "UPNShare", "HLS"],
+            episodeServers: ["HLS", "UPNShare", "Byse", "Voe", "MP4Upload"],
             supportsDub: true,
         };
     }
@@ -628,7 +606,8 @@ class Provider {
         if (!res.ok)
             return [];
         const results = this._resolveRemixData(res.json(), isDub);
-        keep(key, results);
+        if (results.length > 0)
+            keep(key, results);
         return results;
     }
 
@@ -650,7 +629,7 @@ class Provider {
             if (bestScore(results, primary) >= 0.6) {
                 const kept = dropOtherSeasons(results, titles);
                 const picked = narrow ? narrowToBest(kept, primary) : kept;
-                if (cacheKey)
+                if (cacheKey && picked.length > 0)
                     keep(cacheKey, picked);
                 return picked;
             }
@@ -682,7 +661,7 @@ class Provider {
             }
             const kept = dropOtherSeasons(merged, titles);
             const picked = narrow ? narrowToBest(kept, primary) : kept;
-            if (cacheKey)
+            if (cacheKey && picked.length > 0)
                 keep(cacheKey, picked);
             return picked;
         }
@@ -797,7 +776,8 @@ class Provider {
             const root = node.data.find((item: any) => item && typeof item === "object" && "embeds" in item);
             if (root) {
                 const found = { data: node.data, embeds: node.data[root.embeds] || {} };
-                keep(key, found);
+                if (Object.keys(found.embeds).length > 0)
+                    keep(key, found);
                 return found;
             }
         }
@@ -814,7 +794,16 @@ class Provider {
         const cached = remember<boolean>(key);
         if (cached !== undefined)
             return cached;
-        const dubbed = (await this.audioTracks(slug, number)).indexOf("DUB") !== -1;
+        let tracks: string[];
+        try {
+            tracks = await this.audioTracks(slug, number);
+        }
+        catch (err) {
+            return true;
+        }
+        if (tracks.length === 0)
+            return true;
+        const dubbed = tracks.indexOf("DUB") !== -1;
         keep(key, dubbed);
         return dubbed;
     }
@@ -834,6 +823,11 @@ class Provider {
         catch {
             throw new Error("ID inválido");
         }
+        await this.episodeEmbeds(slug, number);
+        return resolveServers(`av1:servers:${slug}:${number}:${type}`, this.getSettings().episodeServers, server, name => this.resolveServer(slug, number, type, name));
+    }
+
+    private async resolveServer(slug: string, number: number, type: SubOrDub, server: string): Promise<EpisodeServer> {
         try {
             const found = await this.episodeEmbeds(slug, number);
             if (!found)
@@ -879,11 +873,11 @@ class Provider {
             } = {};
             if (wanted === "HLS") {
                 sources = [{
-                    url: embedUrl.replace("/play/", "/m3u8/"),
-                    type: "m3u8",
-                    quality: "auto",
-                    subtitles: [],
-                }];
+                        url: embedUrl.replace("/play/", "/m3u8/"),
+                        type: "m3u8",
+                        quality: "auto",
+                        subtitles: [],
+                    }];
                 headers = HLS_HEADERS;
             }
             else if (wanted === "UPNSHARE") {
