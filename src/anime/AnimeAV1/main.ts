@@ -139,11 +139,11 @@ function seasonOrdinal(title: string): number {
     const trailing = text.match(/\bseason\s+(\d+)\b/);
     if (trailing)
         return parseInt(trailing[1], 10);
-    const roman = text.match(/\s(v?i{1,3})$/);
+    const roman = text.match(/\s(ii|iii|iv|vi|v)$/);
     if (roman) {
         const map: {
             [key: string]: number;
-        } = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
+        } = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6 };
         return map[roman[1]] || 0;
     }
     return 0;
@@ -566,7 +566,8 @@ class Provider {
         if (!res.ok)
             return [];
         const results = this._resolveRemixData(res.json(), isDub);
-        keep(key, results);
+        if (results.length > 0)
+            keep(key, results);
         return results;
     }
 
@@ -588,7 +589,7 @@ class Provider {
             if (bestScore(results, primary) >= 0.6) {
                 const kept = dropOtherSeasons(results, titles);
                 const picked = narrow ? narrowToBest(kept, primary) : kept;
-                if (cacheKey)
+                if (cacheKey && picked.length > 0)
                     keep(cacheKey, picked);
                 return picked;
             }
@@ -620,7 +621,7 @@ class Provider {
             }
             const kept = dropOtherSeasons(merged, titles);
             const picked = narrow ? narrowToBest(kept, primary) : kept;
-            if (cacheKey)
+            if (cacheKey && picked.length > 0)
                 keep(cacheKey, picked);
             return picked;
         }
@@ -735,7 +736,8 @@ class Provider {
             const root = node.data.find((item: any) => item && typeof item === "object" && "embeds" in item);
             if (root) {
                 const found = { data: node.data, embeds: node.data[root.embeds] || {} };
-                keep(key, found);
+                if (Object.keys(found.embeds).length > 0)
+                    keep(key, found);
                 return found;
             }
         }
@@ -752,7 +754,16 @@ class Provider {
         const cached = remember<boolean>(key);
         if (cached !== undefined)
             return cached;
-        const dubbed = (await this.audioTracks(slug, number)).indexOf("DUB") !== -1;
+        let tracks: string[];
+        try {
+            tracks = await this.audioTracks(slug, number);
+        }
+        catch (err) {
+            return true;
+        }
+        if (tracks.length === 0)
+            return true;
+        const dubbed = tracks.indexOf("DUB") !== -1;
         keep(key, dubbed);
         return dubbed;
     }
