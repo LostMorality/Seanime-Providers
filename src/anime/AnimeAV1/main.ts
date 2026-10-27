@@ -254,6 +254,15 @@ async function resolveServers(key: string, servers: string[], wanted: string, re
     const outcome = held[wanted];
     if (outcome && outcome.found)
         return outcome.found;
+    if (outcome) {
+        for (const server of servers) {
+            const alternative = held[server];
+            if (alternative && alternative.found) {
+                console.error(`AnimeAV1: ${wanted} falló (${outcome.error}), se usa ${server}`);
+                return alternative.found;
+            }
+        }
+    }
     throw new Error(outcome && outcome.error || `Servidor desconocido: ${wanted}`);
 }
 
