@@ -415,8 +415,10 @@ async function extractUpnShare(embedUrl: string): Promise<VideoSource[]> {
     try {
         for (let attempt = 0; attempt < 2; attempt++) {
             const res = await fetchWithRetry(api, 1, upnShareHeaders(embedUrl));
-            if (!res.ok)
+            if (!res.ok) {
+                console.error(`AnimeAV1: UPNShare respondió ${res.status} para ${match[2]}`);
                 return [];
+            }
             const plain = CryptoJS.AES.decrypt(CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(res.text().trim())), CryptoJS.enc.Utf8.parse(UPNSHARE_KEY), { iv: CryptoJS.enc.Utf8.parse(UPNSHARE_IV) }).toString(CryptoJS.enc.Utf8);
             const url = JSON.parse(plain).cfNative;
             if (url)
@@ -482,13 +484,23 @@ async function reachableByseUrl(url: string): Promise<string | null> {
     if (!origin)
         return url;
     const path = url.slice(origin[0].length);
-    for (const edge of [origin[0], ...BYSE_FALLBACK_EDGES.filter(e => e !== origin[0])]) {
-        const answered = await fetchWithRetry(edge + path, 0, PLAIN_HEADERS).then(res => res.ok, () => false);
-        if (answered)
-            return edge + path;
-    }
-    console.error(`AnimeAV1: ningún edge de Byse responde para ${origin[0]}`);
-    return null;
+    const edges = [origin[0], ...BYSE_FALLBACK_EDGES.filter(e => e !== origin[0])];
+    const found = await new Promise<string | null>(resolve => {
+        let pending = edges.length;
+        for (const edge of edges) {
+            fetchWithRetry(edge + path, 0, PLAIN_HEADERS)
+                .then(res => res.ok, () => false)
+                .then(answered => {
+                if (answered)
+                    resolve(edge + path);
+                else if (--pending === 0)
+                    resolve(null);
+            });
+        }
+    });
+    if (!found)
+        console.error(`AnimeAV1: ningún edge de Byse responde para ${origin[0]}`);
+    return found;
 }
 
 function byseKeyParts(playback: {
