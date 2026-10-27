@@ -272,16 +272,31 @@ async function resolveServers(key: string, servers: string[], wanted: string, re
     if (outcome && outcome.found)
         return outcome.found;
     if (outcome) {
-        await Promise.all(others);
-        for (const server of servers) {
-            const alternative = held[server];
-            if (alternative && alternative.found) {
-                console.error(`AnimeAV1: ${wanted} falló (${outcome.error}), se usa ${server}`);
-                return alternative.found;
-            }
+        const ready = servers.map(server => held[server]).find(candidate => candidate && candidate.found);
+        const alternative = ready && ready.found || await firstFound(others);
+        if (alternative) {
+            console.error(`AnimeAV1: ${wanted} falló (${outcome.error}), se usa ${alternative.server}`);
+            const asked = servers.find(name => name.toUpperCase() === wanted);
+            return { ...alternative, server: asked || alternative.server };
         }
     }
     throw new Error(outcome && outcome.error || `Servidor desconocido: ${wanted}`);
+}
+
+function firstFound(pending: Promise<ServerOutcome>[]): Promise<EpisodeServer | undefined> {
+    return new Promise(done => {
+        let left = pending.length;
+        if (left === 0)
+            done(undefined);
+        for (const outcome of pending) {
+            outcome.then(settled => {
+                if (settled.found)
+                    done(settled.found);
+                else if (--left === 0)
+                    done(undefined);
+            });
+        }
+    });
 }
 
 const HLS_HEADERS: {
@@ -483,18 +498,12 @@ async function extractByse(embedUrl: string): Promise<VideoSource[]> {
         if (!plain)
             return [];
         const sources: any[] = (JSON.parse(plain).sources || []).filter((s: any) => s && typeof s.url === "string");
-        const urls = await Promise.all(sources.map(s => reachableByseUrl(s.url)));
         const found: VideoSource[] = [];
         sources.forEach((s, i) => {
-            const url = urls[i];
-            if (!url)
-                return;
-            found.push({
-                url,
-                type: String(s.mime_type || "").indexOf("mpegurl") !== -1 ? "m3u8" : "mp4",
-                quality: s.label || s.height && `${s.height}p` || `auto ${i + 1}`,
-                subtitles: [],
-            });
+            const quality = s.label || s.height && `${s.height}p` || `auto ${i + 1}`;
+            const type = String(s.mime_type || "").indexOf("mpegurl") !== -1 ? "m3u8" : "mp4";
+            for (const edge of byseEdgeUrls(s.url))
+                found.push({ url: edge.url, type, quality: edge.label ? `${quality} (${edge.label})` : quality, subtitles: [] });
         });
         return found;
     }
@@ -504,30 +513,22 @@ async function extractByse(embedUrl: string): Promise<VideoSource[]> {
     return [];
 }
 
-const BYSE_FALLBACK_EDGES = ["https://edge1-frankfurt-sprintcdn.owphbf24.com"];
+const BYSE_FALLBACK_EDGES = [{ origin: "https://edge1-frankfurt-sprintcdn.owphbf24.com", label: "Frankfurt" }];
 
-async function reachableByseUrl(url: string): Promise<string | null> {
+function byseEdgeUrls(url: string): {
+    url: string;
+    label?: string;
+}[] {
     const origin = url.match(/^https?:\/\/[^/]+/);
     if (!origin)
-        return url;
+        return [{ url }];
     const path = url.slice(origin[0].length);
-    const edges = [origin[0], ...BYSE_FALLBACK_EDGES.filter(e => e !== origin[0])];
-    const found = await new Promise<string | null>(resolve => {
-        let pending = edges.length;
-        for (const edge of edges) {
-            fetchWithRetry(edge + path, 0, PLAIN_HEADERS)
-                .then(res => res.ok, () => false)
-                .then(answered => {
-                if (answered)
-                    resolve(edge + path);
-                else if (--pending === 0)
-                    resolve(null);
-            });
-        }
-    });
-    if (!found)
-        console.error(`AnimeAV1: ningún edge de Byse responde para ${origin[0]}`);
-    return found;
+    return [
+        { url },
+        ...BYSE_FALLBACK_EDGES
+            .filter(edge => edge.origin !== origin[0])
+            .map(edge => ({ url: edge.origin + path, label: edge.label })),
+    ];
 }
 
 function byseKeyParts(playback: {
