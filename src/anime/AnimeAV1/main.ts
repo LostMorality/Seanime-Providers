@@ -245,16 +245,34 @@ async function resolveServers(key: string, servers: string[], wanted: string, re
         [server: string]: ServerOutcome;
     }>(key, SERVER_FOUND_MS) || {};
     const usable = (outcome: ServerOutcome | undefined) => !!outcome && now - outcome.at < (outcome.found ? SERVER_FOUND_MS : SERVER_FAILURE_MS);
-    if (!usable(held[wanted])) {
-        const stale = servers.filter(server => !usable(held[server]));
-        const settled = await Promise.all(stale.map(server => resolve(server).then((found): ServerOutcome => ({ found, at: Date.now() }), (err): ServerOutcome => ({ error: err instanceof Error ? err.message : String(err), at: Date.now() }))));
-        stale.forEach((server, i) => (held[server] = settled[i]));
-        keep(key, held);
+    let outcome = held[wanted];
+    const others: Promise<ServerOutcome>[] = [];
+    if (!usable(outcome)) {
+        let own: Promise<ServerOutcome> | undefined;
+        for (const server of servers.filter(name => !usable(held[name]))) {
+            const pending = resolve(server)
+                .then((found): ServerOutcome => ({ found, at: Date.now() }), (err): ServerOutcome => ({ error: err instanceof Error ? err.message : String(err), at: Date.now() }))
+                .then(settled => {
+                const current = remember<{
+                    [server: string]: ServerOutcome;
+                }>(key, SERVER_FOUND_MS) || {};
+                current[server] = settled;
+                keep(key, current);
+                held[server] = settled;
+                return settled;
+            });
+            if (server === wanted)
+                own = pending;
+            else
+                others.push(pending);
+        }
+        if (own)
+            outcome = await own;
     }
-    const outcome = held[wanted];
     if (outcome && outcome.found)
         return outcome.found;
     if (outcome) {
+        await Promise.all(others);
         for (const server of servers) {
             const alternative = held[server];
             if (alternative && alternative.found) {
